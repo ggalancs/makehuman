@@ -14,7 +14,7 @@ macos/setup.sh        # venv, dependencies, system assets (~270 MB), compiled da
 macos/makehuman       # start MakeHuman
 ```
 
-The asset repository used by `download_assets_git.py` no longer exists; `download_system_assets.py`
+The asset repository used by the former `download_assets_git.py` no longer exists; `download_system_assets.py`
 installs the same CC0 assets from the MakeHuman Community asset pack instead. What was changed and
 why, how it was tested and how to run the checks: [macos/README.md](macos/README.md).
 
@@ -50,7 +50,7 @@ If you rather run the code from source:
 * Install [git](https://git-scm.com/) with [LFS support](https://git-lfs.github.com/). Modern git clients have LFS support included per default. 
 * Make sure the command "git" is available via the PATH variable.
 * Use git to clone https://github.com/makehumancommunity/makehuman.git (or download the source as a zip)
-* Run the "download\_assets\_git.py" script in the "makehuman" subdirectory of the source code.
+* Run the "download\_system\_assets.py" script in the "makehuman" subdirectory of the source code (the asset repository that "download\_assets\_git.py" cloned no longer exists).
 * Optionally also run:
   * compile\_models.py
   * compile\_proxies.py

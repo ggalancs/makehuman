@@ -79,7 +79,7 @@ pipeline {
 			steps {
 				script {
 					dir("makehuman") {
-						sh "python3 download_assets_git.py"
+						sh "python3 download_system_assets.py"
 					}
 				}
 			}

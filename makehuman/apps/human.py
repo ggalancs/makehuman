@@ -306,7 +306,6 @@ class Human(guicommon.Object, animation.AnimatedMesh):
         :param all:
         :return:
         """
-        import warpmodifier
         log.debug("human.targetsDetailStack:")
         for path,value in self.targetsDetailStack.items():
             try:
@@ -315,8 +314,6 @@ class Human(guicommon.Object, animation.AnimatedMesh):
                 target = None
             if target is None:
                 stars = " ??? "
-            elif isinstance(target, warpmodifier.WarpTarget):
-                stars = " *** "
             else:
                 stars = " "
             if all or path[0:4] != "data":
@@ -329,13 +326,9 @@ class Human(guicommon.Object, animation.AnimatedMesh):
         :param vertsToList:
         :return:
         """
-        import warpmodifier
         log.debug("algos3d.targetBuffer:")
         for path,target in algos3d._targetBuffer.items():
-            if isinstance(target, warpmodifier.WarpTarget):
-                stars = " *** "
-            else:
-                stars = " "
+            stars = " "
             if all or path[0:4] != "data":
                 log.debug("  %s%s:%s %d" % (stars, path, target, vertsToList))
                 for n,vn in enumerate(target.verts[0:vertsToList]):

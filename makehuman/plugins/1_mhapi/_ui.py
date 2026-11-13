@@ -11,26 +11,13 @@ from progress import Progress
 
 from core import G
 
-import sys
-
-if sys.version_info >= (3,4):
-    import importlib
-    import importlib.util
-    from PyQt5 import QtGui
-    from PyQt5 import QtCore
-    from PyQt5.QtGui import *
-    from PyQt5 import QtWidgets
-    from PyQt5.QtWidgets import *
-else:
-    import pkgutil
-    if pkgutil.find_loader("PySide") is not None:
-        from PySide import QtGui
-        from PySide import QtCore
-        from PySide.QtGui import *
-    else:
-        from PyQt4 import QtGui
-        from PyQt4 import QtCore
-        from PyQt4.QtGui import *
+import importlib
+import importlib.util
+from PyQt5 import QtGui
+from PyQt5 import QtCore
+from PyQt5.QtGui import *
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import *
 
 
 class ComboBox(QComboBox, QWidget):
@@ -54,7 +41,7 @@ class ComboBox(QComboBox, QWidget):
         return self.currentText()
 
     def rowCount(self):
-        return len( [item for item in self.getItems() if not item.isHidden()] )
+        return self.count()  # QComboBox has no hidden items (getItems() was ListView's API)
 
     def setCurrentRow(self,row):
         self.setCurrentIndex(row)
@@ -98,8 +85,11 @@ class UI(NameSpace):
         return taskviews
 
     def getTaskView(self, categoryName, taskName):
-        category = G.app.categories[categoryName]
-        return category.tasksByName[taskName]
+        """The task view, or None when the category or task does not exist (callers check for None)."""
+        category = G.app.categories.get(categoryName)
+        if category is None:
+            return None
+        return category.tasksByName.get(taskName)
 
     def createWidget(self):
         return gui.Widget()

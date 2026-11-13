@@ -336,9 +336,9 @@ class MHAppExporter(object):
             try:
                 if not self.assetRepoLocation is None:
                     os.environ["GIT_OFFICIAL_CLONE_LOCATION"] = self.assetRepoLocation
-                self.runProcess( [pythonCmd,"download_assets_git.py"] )
+                self.runProcess( [pythonCmd,"download_system_assets.py"] )
             except subprocess.CalledProcessError:
-                print("check that download_assets_git.py is working correctly")
+                print("check that download_system_assets.py is working correctly")
                 sys.exit(1)
             print("\n")
 

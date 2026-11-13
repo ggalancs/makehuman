@@ -21,19 +21,12 @@ class Utility(NameSpace):
         self.isPy3 = (sys.version_info >= (3,0))
         self.debugWriter = {}
 
-        if self.isPython3():
-            import urllib.request
-            self.urlrequest = urllib.request
-            import importlib
-            import importlib.util
-            self.hasPySide = (importlib.util.find_spec("PySide") is not None)
-            self.hasPyQt = (importlib.util.find_spec("PyQt4") is not None)
-        else:
-            import urllib2
-            self.urlrequest = urllib2
-            import pkgutil
-            self.hasPySide = (pkgutil.find_loader("PySide") is not None)
-            self.hasPyQt = (pkgutil.find_loader("PyQt4") is not None)
+        import urllib.request
+        self.urlrequest = urllib.request
+        import importlib
+        import importlib.util
+        self.hasPySide = (importlib.util.find_spec("PySide") is not None)
+        self.hasPyQt = (importlib.util.find_spec("PyQt4") is not None)
 
         self.logChannels = {}
 
@@ -49,23 +42,14 @@ class Utility(NameSpace):
             return "list"
         if isinstance(content, array.array):
             return "array(" + content.typecode + ")"
-        if self.isPy3:
-            if isinstance(content, bytes):
-                return "bytes"
-            if isinstance(content, str):
-                return "unicode"
-        else:
-            if isinstance(content, unicode):
-                return "unicode"
-            if isinstance(content, str):
-                return "bytes"
+        if isinstance(content, bytes):
+            return "bytes"
+        if isinstance(content, str):
+            return "unicode"
 
-        # None of the listed types matched
-
-        with open("/tmp/missingtype.txt","a", encoding='utf-8') as f:
-            f.write(str(type(content)))
-            f.write("\n")
-
+        # None of the listed types matched (this used to be appended to /tmp/missingtype.txt)
+        import log
+        log.debug("getTypeAsString: unlisted type %s", type(content))
         return str(type(content))
 
     def getValueAsString(self, content, newLinesIfComplex=False):
@@ -79,19 +63,15 @@ class Utility(NameSpace):
             #            result = result + ", "
             #    result = result + self.getValueAsString(value)
             return result
-        if self.isPy3:
-            if isinstance(content, str):
-                return content
-            if isinstance(content, bytes):
-                try:
-                    val = content.decode("utf-8")
-                except:
-                    import binascii
-                    val = binascii.hexlify(content).decode("utf-8")
-                return val
-        else:
-            if isinstance(content, str):
-                return content
+        if isinstance(content, str):
+            return content
+        if isinstance(content, bytes):
+            try:
+                val = content.decode("utf-8")
+            except UnicodeDecodeError:
+                import binascii
+                val = binascii.hexlify(content).decode("utf-8")
+            return val
         if isinstance(content, float):
             # This is to parry differences in precision in py2 vs py3
             # Even when using round(), results will differ. Thus we do
@@ -154,22 +134,6 @@ class Utility(NameSpace):
                 else:
                     f.write( bytes(content) )
 
-    def _py2debugWrite(self, content, fnBin, fnTxt):
-        with open(fnBin, "wb") as f:
-            wasWritten = False
-            if isinstance(content, list):
-                for value in content:
-                    if isinstance(value, float):
-                        f.write( struct.pack("f", value) )
-                    else:
-                        f.write( bytes(value) )
-                wasWritten = True
-            if isinstance(content, float) and not wasWritten:
-                f.write( struct.pack("f", value) )
-                wasWritten = True
-            if not wasWritten:
-                f.write( bytes(content) )
-
     def debugWrite(self, content, channelName = "unsorted", location = "genericLocation"):
         debugDir = self.api.locations.getUserHomePath("debugWriter")
         subPath = os.path.join( os.path.abspath(debugDir), channelName )
@@ -187,10 +151,7 @@ class Utility(NameSpace):
         fnTxt = os.path.join(subPath, "textualContent.txt")
         fnStack = os.path.join(subPath, "stack-" + incrementStr + "-" + location + ".txt")
 
-        if self.isPy3:
-            self._py3debugWrite(content, fnBin, fnTxt)
-        else:
-            self._py2debugWrite(content, fnBin, fnTxt)
+        self._py3debugWrite(content, fnBin, fnTxt)
 
         with open(fnTxt, "a", encoding='utf-8') as f:
             f.write(str(increment))
