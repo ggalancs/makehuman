@@ -1090,10 +1090,16 @@ class Human(guicommon.Object, animation.AnimatedMesh):
                 for dep in reverseMapping.get(modifier.groupName, []):
                     del self._modifier_varMapping[dep]
 
+            # The mapping lists group names: drop the group once no modifier of it depends on dep
             for dep in modifier.macroDependencies:
-                self._modifier_dependencyMapping[dep].remove(modifier)
-                if len(self._modifier_dependencyMapping[dep]) == 0:
-                    del self._modifier_dependencyMapping[dep]
+                group = self._modifier_groups.get(modifier.groupName, [])
+                if any(dep in m.macroDependencies for m in group):
+                    continue
+                dependents = self._modifier_dependencyMapping.get(dep, [])
+                if modifier.groupName in dependents:
+                    dependents.remove(modifier.groupName)
+                if not dependents:
+                    self._modifier_dependencyMapping.pop(dep, None)
 
             # Remove no longer controlled targets from stack (still requires applyAllTargets() for update)
             targets = self._getModifierTargets()
@@ -1459,15 +1465,10 @@ class Human(guicommon.Object, animation.AnimatedMesh):
             return match1.groups(1) == match2.groups(1) and match1.groups(2) == match2.groups(2)
 
         def _get_version(lineData):
-            try:
-                for l in lineData:
-                    if not l:
-                        continue
-                    l = l.split()
-                    if l[0] == 'version':
-                        return l[1]
-            except:
-                return None
+            for l in lineData:
+                words = l.split()
+                if len(words) >= 2 and words[0] == 'version':
+                    return words[1]
             return None
 
         log.message("Loading human from MHM file %s.", filename)
@@ -1540,7 +1541,9 @@ class Human(guicommon.Object, animation.AnimatedMesh):
                             log.warning('Unknown property in MHM file: %s', lineData)
 
             version = _get_version(lines)
-            if not _compare_versions(version, getShortVersion(noSub=True)):
+            if version is None:
+                log.warning("MHM file %s has no version line, loading it as a file of this version", filename)
+            if version is not None and not _compare_versions(version, getShortVersion(noSub=True)):
                 log.message("MHM file is of version %s, attempting to load with backward compatibility" % version)
                 import compat
                 compat.loadMHM(version, lines, _load_property, strict)

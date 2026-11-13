@@ -78,7 +78,7 @@ class FileCache(object):
         """
         Remove non-existing entries from this cache
         """
-        for fileId in self._cache.keys():
+        for fileId in list(self._cache.keys()):
             if not os.path.exists(fileId):
                 try:
                     del self._cache[fileId]
@@ -152,8 +152,7 @@ class FileCache(object):
             try:
                 self._cache[fileId] = (mtime,) + getMetadata(filepath)
             except Exception as e:
-                log.error('Error while parsing metadata for file ', str(e))
-                log.error('Failed to parse metadata for file ', filepath)
+                log.error('Failed to parse metadata for file %s: %s', filepath, e)
 
         if removeOldEntries:
             """Remove entries from cache that no longer exist"""

@@ -355,7 +355,8 @@ class BVH():
                 log.debug("Cannot use reference joint %s for determining axis system, it is an end-effector (has no children)" % ref_joint.name)
                 ref_joint = None
         if ref_joint is None:
-            log.warning("Could not auto guess axis system for BVH file %s because no known joint name is found. Using Y up as default axis orientation." % filepath)
+            log.warning("Could not auto guess axis system for BVH file %s because no known joint name is found. Using Y up as default axis orientation." % self.name)
+            return False
         else:
             tail_joint = ref_joint.children[0]
             direction = tail_joint.position - ref_joint.position
@@ -536,7 +537,7 @@ class BVH():
         joint.channels = words[2:]
 
         if int(nChannels) != len(joint.channels):
-            RuntimeError('Expected %d channels found %d' % (nChannels, len(joint.channels)))
+            raise RuntimeError('Expected %d channels found %d' % (nChannels, len(joint.channels)))
         
         # Read child joints
         parentName = joint.getName()
@@ -577,14 +578,15 @@ class BVH():
 
         return data
 
-    def __calcPosition(self, joint, offset):
+    def __calcPosition(self, joint, offset, fromFile=True):
         """
         Calculate this joint's position using offset (from parent) defined in
-        BVH hierarchy data.
+        BVH hierarchy data. Offsets read from the file are converted to Y up;
+        pass fromFile=False for offsets that already were.
         """
         joint.offset = np.asarray(offset, dtype=np.float32)
 
-        if self.convertFromZUp:
+        if fromFile and self.convertFromZUp:
             y = joint.offset[1]
             joint.offset[1] = joint.offset[2]
             joint.offset[2] = -y
@@ -609,7 +611,7 @@ class BVH():
         """
         for joint in self.getJoints():
             # Rescale joint offset and recalculate positions and rest matrices
-            self.__calcPosition(joint, scaleFactor * joint.offset)
+            self.__calcPosition(joint, scaleFactor * joint.offset, fromFile=False)
             
             # Rescale translation channels
             nFrames = self.frameCount
@@ -630,8 +632,8 @@ class BVH():
         """
         self.rootJoint.offset += offsetVect
         for joint in self.getJoints():
-            # Rescale joint offset and recalculate positions and rest matrices
-            self.__calcPosition(joint, joint.offset)
+            # Recalculate positions and rest matrices
+            self.__calcPosition(joint, joint.offset, fromFile=False)
             
             # Recalculate pose matrices
             joint.calculateFrames()

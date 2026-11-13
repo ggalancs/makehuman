@@ -418,7 +418,7 @@ def loadTextProxy(human, filepath, type="Clothes"):
         elif key == 'description':
             proxy.description = " ".join(words[1:])
         elif key in ['author', 'license', 'homepage', 'author:', 'license:']:
-            proxy.license.updateFromComment(words)
+            proxy.license.updateFromComment(" ".join(words))
         elif key == 'tag':
             proxy.tags.append( " ".join(words[1:]).lower() )
         elif key == 'version':
@@ -552,6 +552,8 @@ def loadTextProxy(human, filepath, type="Clothes"):
 
 
 def saveBinaryProxy(proxy, path):
+    folder = os.path.dirname(path)
+
     def _properPath(path):
         return getpath.getJailedPath(path, folder)
 
@@ -560,8 +562,6 @@ def saveBinaryProxy(proxy, path):
         uvStr,uvIdx = _packStringList([ _properPath(proxy.uvLayers[k]) for k in sorted(proxy.uvLayers.keys()) ])
 
         licStr, licIdx = proxy.license.toNumpyString()
-
-        folder = os.path.dirname(path)
 
 
         vars_ = dict(
@@ -958,7 +958,7 @@ def vertsToNumpy(verts):
 
 
 def _getFileName(folder, file, suffix):
-    (name, ext) = os.path.split(file)
+    (name, ext) = os.path.splitext(file)
     if ext:
         return os.path.join(folder, file)
     else:
@@ -1071,6 +1071,9 @@ def _unpackStringList(text, index):
 
 def _getFilePath(filename, folder = None, altExtensions=None):
     import getpath
+    if not filename or not isinstance(filename, str):
+        return filename
+
     if altExtensions is not None:
         # Search for existing path with alternative file extension
         for aExt in altExtensions:

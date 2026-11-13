@@ -57,7 +57,7 @@ class Color(object):
     def getValues(self):
         return [self.r, self.g, self.b]
 
-    values = property(getValues, setValues)
+    values = property(getValues, lambda self, rgb: self.setValues(*rgb))
 
     def setR(self, r):
         self._r = max(0.0, min(1.0, float(r)))
@@ -154,13 +154,13 @@ class Color(object):
         else:
             return type(self)(other[0] * self.r, other[1] * self.g, other[2] * self.b)
 
-    def __div__(self, other):
+    def __truediv__(self, other):
         if isinstance(other, (int, float, bool)):
             return type(self)(self.r / other, self.g / other, self.b / other)
         else:
             return type(self)(self.r / other[0], self.g / other[1], self.b / other[2])
 
-    def __rdiv__(self, other):
+    def __rtruediv__(self, other):
         if isinstance(other, (int, float, bool)):
             return type(self)(other / self.r, other / self.g, other / self.b)
         else:
@@ -1162,7 +1162,7 @@ class Material(object):
         """
         global _shaderConfigDefines
 
-        for shaderDefine in self._shaderDefines:
+        for shaderDefine in list(self._shaderDefines):
             if shaderDefine not in _shaderConfigDefines:
                 self.removeShaderDefine(shaderDefine)
         self.shaderChanged = True
@@ -1383,7 +1383,7 @@ class Material(object):
                 else:
                     # Generate random name
                     import random
-                    newPath = 'texture-%s.png' % int(random.random()*100)
+                    newPath = os.path.join(exportPath, 'texture-%s.png' % int(random.random()*100))
                 tPath.save(newPath)
                 tPath = None
             else:

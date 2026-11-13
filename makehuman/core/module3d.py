@@ -165,7 +165,7 @@ class Object3D(object):
             other.setCoords(scale * self.coord)
             other.setColor(self.color.copy())
             other.setUVs(self.texco.copy())
-            other.setFaces(self.fvert.copy(), self.fuvs.copy(), self.group.copy())
+            other.setFaces(self.fvert.copy(), self.fuvs.copy() if self.has_uv else None, self.group.copy())
             other.changeFaceMask(self.face_mask.copy())
 
         other.calcNormals()
@@ -408,7 +408,7 @@ class Object3D(object):
         s1 = w2[:,0] - w1[:,0]
         s2 = w3[:,0] - w1[:,0]
         t1 = w2[:,1] - w1[:,1]
-        t2 = w3[:,1] = w1[:,1]
+        t2 = w3[:,1] - w1[:,1]
 
         # Prevent NANs because of borked up UV coordinates  # TODO perhaps remove this
         s1[np.argwhere(np.equal(s1, 0.0))] = 0.0000001
@@ -426,27 +426,33 @@ class Object3D(object):
                                         ( (s1 * y2) - (s2 * y1) ) * r,
                                         ( (s1 * z2) - (s2 * z1) ) * r  ] )
 
-        tan[:,0] = np.sum(sdir[self.vface[ix]])
-        tan[:,1] = np.sum(tdir[self.vface[ix]])
+        # per vertex, the sum over its faces (the unused slots of vface are masked out)
+        vface = self.vface[ix]
+        used = np.arange(vface.shape[1])[None,:,None] < self.nfaces[ix][:,None,None]
+        tan[:,0] = np.sum(sdir[vface] * used, axis=1)
+        tan[:,1] = np.sum(tdir[vface] * used, axis=1)
 
         # Gramm-Schmidt orthogonalize
         dotP = dot_v3(self.vnorm[ix], tan[:,0] )
         # Duplicate dot product value in 3 columns because scalar * (n x 3)
         # does not work
         dotP = np.tile(dotP, (3,1)).transpose().reshape(len(tan),3)
-        self.vtang[ix,:3] = tan[:,0] - dotP * self.vnorm[ix]
+        tangent = tan[:,0] - dotP * self.vnorm[ix]
+        length = np.sqrt(np.sum(tangent ** 2, axis=-1))
+        # Where the tangent is parallel to the normal (or zero) any perpendicular vector will do
+        degenerate = length < 1e-6
+        if np.any(degenerate):
+            normal = self.vnorm[ix][degenerate]
+            axis = np.where(np.abs(normal[:,0:1]) < 0.9, [[1.0, 0.0, 0.0]], [[0.0, 1.0, 0.0]])
+            tangent[degenerate] = np.cross(normal, axis)
+            length[degenerate] = np.sqrt(np.sum(tangent[degenerate] ** 2, axis=-1))
         # Normalize
-        self.vtang[ix,:3] /= np.sqrt(np.sum(self.vtang[ix,:3] ** 2, axis=-1))[:,None]
+        self.vtang[ix,:3] = tangent / length[:,None]
 
         # Determine Handedness as w parameter
-        self.vtang[ix, 3] = 1.0
-        indx = np.argwhere(np.less(dot_v3( \
-                                     np.cross( \
-                                           self.vnorm[ix], \
-                                           tan[:,0]), \
-                                     tan[:,1]), \
-                                   0.0))
-        self.vtang[ix,3][indx] = -1.0
+        # (one assignment: with an index array, vtang[ix,3][...] = would write into a copy)
+        self.vtang[ix, 3] = np.where(dot_v3(np.cross(self.vnorm[ix], tan[:,0]), tan[:,1]) < 0.0,
+                                     -1.0, 1.0)
 
     def getObject(self):
         if self.__object:
@@ -716,7 +722,8 @@ class Object3D(object):
                 self.vface[vn,self.nfaces[vn]] = idx        # add the index of the face to the array, row given by vn, column by counter nfaces[vn]
                 self.nfaces[vn] +=1                         # now increment the counter
 
-        imax = i+1    # just needed later not to be recalculated.
+        # vertices per face, needed later (all faces have the same number)
+        imax = min(len(self.fvert[0]), self.vertsPerFaceForExport) if len(self.fvert) else 0
 
         # in case this function is not called from catmull-clark function resize the self.vface to a minimum
         if resize is True:
@@ -1209,7 +1216,7 @@ class Object3D(object):
         if recalcVertexNormals:
             self.calcVertexNormals(verticesToUpdate)
 
-        if recalcFaceNormals or recalcVertexNormals and self.calculateTangents:
+        if (recalcFaceNormals or recalcVertexNormals) and self.calculateTangents:
             self.calcVertexTangents(verticesToUpdate)
                 
     def calcBBox(self, ix=None, onlyVisible = True, fixedFaceMask = None):

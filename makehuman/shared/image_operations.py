@@ -70,7 +70,9 @@ def blurred(img, level=10.0, kernelSize = 15):
     # prepare an 1-D Gaussian convolution kernel
     t = numpy.linspace(-20, 20, kernelSize)
     bump = numpy.exp(-0.1*(t/level)**2)
-    bump /= numpy.trapz(bump) # normalize the integral to 1
+    # numpy.trapz was removed in numpy 2 (renamed trapezoid, which numpy 1.x lacks)
+    trapezoid = getattr(numpy, 'trapezoid', None) or numpy.trapz
+    bump /= trapezoid(bump) # normalize the integral to 1
     padSize = int(kernelSize/2)
     paddedShape = (img.data.shape[0] + padSize, img.data.shape[1] + padSize)
     progress(0.15)
@@ -191,7 +193,7 @@ def compose(channels):
         if c.components == 1:
             outch.append(c.data[:,:,0:1])
         else:
-            if c.components < i:
+            if c.components <= i:
                 raise TypeError("Image No. %i has not enough channels" % i)
             outch.append(c.data[:,:,i:i+1])
         i += 1
@@ -224,13 +226,13 @@ def getBlack(img):
     """
     Get a single black channel with the dimensions of the specified image.
     """
-    return colorAsImage([0], image=None, width=img.height, height=img.width)
+    return colorAsImage([0], image=None, width=img.width, height=img.height)
 
 def getWhite(img):
     """
     Get a single white channel with the dimensions of the specified image.
     """
-    return colorAsImage([255], image=None, width=img.height, height=img.width)
+    return colorAsImage([255], image=None, width=img.width, height=img.height)
 
 '''
 Image analysis

@@ -87,9 +87,9 @@ if __name__ == '__main__':
                 os.remove(iname)
                 os.remove(vname)
                 print("[%.0f%% done] converted target %s" % (100*(float(i)/float(len(allTargets))), path))
-            except None as e:
-                raise e
+            except Exception:
                 print('error converting target %s' % path)
+                raise
 
     print("Writing images list")
     with open('data/images.list', 'w', encoding="utf-8") as f:

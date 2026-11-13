@@ -125,7 +125,7 @@ class Sorter(object):
             """
 
             self._methods = dict(methods)
-            self._fields = list(zip(*methods))[0]
+            self._fields = [field for field, _method in methods]
 
         def extend(self, methods):
             """
@@ -137,7 +137,7 @@ class Sorter(object):
             """
 
             self._methods.update(methods)
-            self._fields.extend(list(zip(*methods)[0]))
+            self._fields.extend(field for field, _method in methods)
 
     def __init__(self):
         """

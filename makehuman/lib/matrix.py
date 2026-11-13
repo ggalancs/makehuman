@@ -143,7 +143,7 @@ def lookat(eye, target, up):
     F = target[:3] - eye[:3]
     f = normalize(F)
     U = normalize(up[:3])
-    s = np.cross(f, U)
+    s = normalize(np.cross(f, U))  # f and up need not be perpendicular
     u = np.cross(s, f)
     M = np.matrix(np.identity(4))
     M[:3,:3] = np.vstack([s,u,-f])

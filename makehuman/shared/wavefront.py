@@ -157,8 +157,12 @@ def writeObjFile(path, meshes, writeMTL=True, config=None, filterMaskedFaces=Tru
 
     if isinstance(path, io.IOBase):
         fp = path
+        objpath = getattr(path, 'name', None)
+        if not isinstance(objpath, str):
+            writeMTL = False  # no file name to put the .mtl next to
     else:
         fp = open(path, 'w', encoding="utf-8")
+        objpath = path
 
 
     fp.write(
@@ -166,7 +170,7 @@ def writeObjFile(path, meshes, writeMTL=True, config=None, filterMaskedFaces=Tru
         "# www.makehumancommunity.org\n\n")
 
     if writeMTL:
-        mtlfile = path.replace(".obj",".mtl")
+        mtlfile = os.path.splitext(objpath)[0] + ".mtl"
         fp.write("mtllib %s\n" % os.path.basename(mtlfile))
 
     scale = config.scale if config is not None else 1.0
@@ -274,7 +278,7 @@ def writeMaterial(fp, mat, texPathConf = None):
     writeTexture(fp, "map_Ks", mat.specularMapTexture, texPathConf)
     #writeTexture(fp, "map_Tr", mat.translucencyMapTexture, texPathConf)
     # Disabled because Blender interprets map_Disp as map_D
-    if mat.normalMapTexture:
+    if mat.normalMapTexture and texPathConf:
         texPathConf.copyTextureToNewLocation(mat.normalMapTexture)
     #writeTexture(fp, "map_Disp", mat.specularMapTexture, texPathConf)
     #writeTexture(fp, "map_Disp", mat.displacementMapTexture, texPathConf)

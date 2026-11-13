@@ -132,6 +132,9 @@ class TabsBase(Widget):
             self._tabs_by_idx = newIdxList
         self._tabs_by_idx[tab.idx] = tab
         self._tabs_by_name[tab.name] = tab
+        if idx is not None and tab.idx == 0:
+            # only now does index 0 map to the new tab for tabChanged()
+            self.setCurrentIndex(0)
         return tab
 
     def tabChanged(self, idx):
@@ -160,10 +163,7 @@ class Tabs(QtWidgets.QTabWidget, TabsBase):
     def _makeTab(self, tab, idx=None):
         tab.child = TabBar(self)
         if idx != None:
-            i = super(Tabs, self).insertTab(idx, tab.child, tab.label)
-            if i == 0:
-                self.setCurrentIndex(0)
-            return i
+            return super(Tabs, self).insertTab(idx, tab.child, tab.label)
         return super(Tabs, self).addTab(tab.child, tab.label)
 
     def addTab(self, name, label, idx = None):
@@ -186,10 +186,7 @@ class TabBar(QtWidgets.QTabBar, TabsBase):
 
     def _makeTab(self, tab, idx = None):
         if idx != None:
-            i = super(TabBar, self).insertTab(idx, tab.label)
-            if i == 0:
-                self.setCurrentIndex(0)
-            return i
+            return super(TabBar, self).insertTab(idx, tab.label)
         return super(TabBar, self).addTab(tab.label)
 
     def addTab(self, name, label, idx = None):
@@ -1210,29 +1207,6 @@ class Dialog(QtWidgets.QDialog):
             return False
 
 
-class AboutBox(QtWidgets.QMessageBox):
-    def __init__(self, parent, title, text):
-        super(AboutBox, self).__init__(title, text, QtWidgets.QMessageBox.Information, 0, 0, 0, parent)
-
-        if sys.platform.startswith('darwin'):
-            self.setWindowFlags(QtCore.Qt.WindowTitleHint | QtCore.Qt.WindowSystemMenuHint)
-        # Grab window icon of parent
-        icon = self.windowIcon()
-        size = icon.actualSize(QtCore.QSize(64, 64))
-        self.setIconPixmap(icon.pixmap(size))
-
-        # Add an invisible spacer to make the dialog box size to fit the width
-        chars_per_line = 80
-        fm = QtGui.QFontMetrics(self.font())
-        leftMargin, topMargin, rightMargin, bottomMargin = self.getContentsMargins()
-        width = fm.width('0') * chars_per_line + 4 + leftMargin + rightMargin
-
-        horizontalSpacer = QtWidgets.QSpacerItem(width, 0, QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Expanding)
-        layout = self.layout()
-        layout.addItem(horizontalSpacer, layout.rowCount(), 0, 1, layout.columnCount())
-
-        self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-
 class AboutBoxScrollbars(QtWidgets.QDialog):
     def __init__(self, parent, title, text, versiontext):
         super(AboutBoxScrollbars, self).__init__(parent)
@@ -1652,7 +1626,7 @@ class VScrollLayout(QtWidgets.QLayout):
         return self._child
 
     def takeAt(self, index):
-        if self.child is None:
+        if self._child is None:
             return None
         child = self._child
         self._child = None
@@ -1675,7 +1649,9 @@ class VScrollLayout(QtWidgets.QLayout):
 
     def sizeHint(self):
         if self._child is None:
-            return super(VScrollLayout, self).sizeHint()
+            # QLayout.sizeHint is pure virtual: the base class would call this override again
+            left, top, right, bottom = self.getContentsMargins()
+            return QtCore.QSize(left + right, top + bottom)
         # log.debug('VScrollLayout.sizeHint(child): %d %d', self._child.sizeHint().width(), self._child.sizeHint().height())
         left, top, right, bottom = self.getContentsMargins()
         return self._child.sizeHint() + QtCore.QSize(left + right, top + bottom)
@@ -1705,7 +1681,7 @@ class VScrollLayout(QtWidgets.QLayout):
 
     def expandingDirections(self):
         if self._child is None:
-            return 0
+            return QtCore.Qt.Orientations()
         return self._child.expandingDirections()
 
     def hasHeightForWidth(self):
@@ -1741,9 +1717,11 @@ class Viewport(QtWidgets.QWidget):
         self._child = None
 
     def setWidget(self, widget):
-        if widget is None:
+        # the layout holds a single child: take the old one out first
+        if self._child is not None:
             self._layout.removeWidget(self._child)
-        else:
+            self._child.setParent(None)
+        if widget is not None:
             self._layout.addWidget(widget)
         self._child = widget
         self.updateGeometry()
@@ -1926,7 +1904,7 @@ class BrowseButton(Button):
     def setMode(self, mode):
         mode = mode.lower()
         if mode not in ('open', 'save', 'dir'):
-            raise RuntimeError("mode '%s' not recognised; must be 'open', 'save', or 'dir'")
+            raise RuntimeError("mode '%s' not recognised; must be 'open', 'save', or 'dir'" % mode)
         self._mode = mode
 
     mode = property(getMode, setMode)
@@ -1976,7 +1954,7 @@ class BrowseButton(Button):
         if self.mode == 'open':
             path = QtWidgets.QFileDialog.getOpenFileName(G.app.mainwin, directory=self.directory, filter=self.filter)
         elif self.mode == 'save':
-            path = QtWidgets.QFileDialog.getSaveFileName(G.app.mainwin, directory=self.directory, filter=self.filter)
+            path = QtWidgets.QFileDialog.getSaveFileName(G.app.mainwin, directory=path, filter=self.filter)
         elif self.mode == 'dir':
             path = QtWidgets.QFileDialog.getExistingDirectory(G.app.mainwin, directory=self.directory)
 

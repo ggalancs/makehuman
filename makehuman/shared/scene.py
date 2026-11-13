@@ -113,8 +113,6 @@ class SceneObject(object):
     def __getattr__(self, attr):
         if attr in object.__getattribute__(self, "_attributes"):
             return object.__getattribute__(self, "_" + attr)
-        elif hasattr(self, attr):
-            return object.__getattribute__(self, attr)
         else:
             raise AttributeError(
                 '"%s" type scene objects do not have any "%s" attribute.'
@@ -207,7 +205,7 @@ class Scene(object):
         try:
             hfile = open(path, 'rb')
         except IOError as e:
-            log.warning('Could not load %s: %s', path, e[1])
+            log.warning('Could not load %s: %s', path, e.strerror)
             return False
         except Exception as e:
             log.error('Failed to load scene file %s\nError: %s',
@@ -239,11 +237,12 @@ class Scene(object):
                 log.error('Failed to load scene file %s\nError: %s\n',
                     path, repr(e), exc_info=True)
                 # TODO: Revert to buffered saved state here instead
-                if path != self.path:
-                    self.load(self.path)
-                else:
-                    self.close()
                 hfile.close()
+                previous = self.file.path
+                if previous and previous != path:
+                    self.load(previous)
+                else:
+                    self.reset()
                 return False
             hfile.close()
 
@@ -257,7 +256,7 @@ class Scene(object):
         try:
             hfile = open(path, 'wb')
         except IOError as e:
-            log.warning('Could not save %s: %s', path, e[1])
+            log.warning('Could not save %s: %s', path, e.strerror)
             return False
         except Exception as e:
             log.error('Failed to save scene file %s\nError: %s\n',

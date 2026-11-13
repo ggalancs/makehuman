@@ -87,16 +87,16 @@ class Language(object):
             result = string
         else:
             result = self.languageStrings.get(string)
+            if result is None:
+                self.missingStrings[string] = None
+                result = string
 
-        if result is not None:
-            if appendData is not None:
-                if appendFormat is not None:
-                    result = result + (appendFormat % appendData)
-                else:
-                    result = result + appendData
-            return result
-        self.missingStrings[string] = None
-        return string
+        if appendData is not None:
+            if appendFormat is not None:
+                result = result + (appendFormat % appendData)
+            else:
+                result = result + appendData
+        return result
             
     def dumpMissingStrings(self):
         if not self.language:
@@ -108,9 +108,9 @@ class Language(object):
         with open(path, 'w', encoding='utf-8') as f:
             for string in self.missingStrings.keys():
                 if self.language == "master":
-                    f.write('"%s": "%s",\n' % (string.replace('\n', '\\n').encode('utf8'), string.replace('\n', '\\n').encode('utf8')))
+                    f.write('"%s": "%s",\n' % (string.replace('\n', '\\n'), string.replace('\n', '\\n')))
                 else:
-                    f.write('"%s": "",\n' % string.replace('\n', '\\n').encode('utf8'))
+                    f.write('"%s": "",\n' % string.replace('\n', '\\n'))
 
 
 def getLanguages():

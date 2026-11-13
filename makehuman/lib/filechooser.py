@@ -75,8 +75,8 @@ class ThumbnailCache(object):
         pwidth = pixmap.width()
         pheight = pixmap.height()
         if pwidth > width or pheight > height:
-            x0 = max(0, (pwidth - width) / 2)
-            y0 = max(0, (pheight - height) / 2)
+            x0 = max(0, (pwidth - width) // 2)
+            y0 = max(0, (pheight - height) // 2)
             pixmap = pixmap.copy(x0, y0, width, height)
         return pixmap
 
@@ -204,8 +204,10 @@ class FileSort(Sorter):
         return self._metaMethods.fields()
 
     def setMetaFields(self, mf):
-        self._metaMethods = [(field,
-            lambda filename: self._meta[filename][field]) for field in mf]
+        def method(field):
+            return lambda filename: self._meta[filename][field]
+        self._metaMethods = self.Methods()
+        self._metaMethods.assign([(field, method(field)) for field in mf])
 
     metaFields = property(getMetaFields, setMetaFields)
 
@@ -339,6 +341,7 @@ class TagFilter(gui.GroupBox):
 
     def clearAll(self):
         for tggl in self.tags.values():
+            self.removeWidget(tggl)
             tggl.hide()
             tggl.destroy()
         self.selectedTags.clear()
@@ -605,7 +608,7 @@ class FileChooserBase(QtWidgets.QWidget, gui.Widget):
         tags = [t.lower() for t in tags]
         listItem = self._getListItem(item)
         if listItem:
-            listItem.tags = listItem.tags.union(tags)
+            listItem.tags = set(listItem.tags).union(tags)
 
     def setTags(self, item, tags):
         tags = [t.lower() for t in tags]
@@ -738,6 +741,7 @@ class ListFileChooser(FileChooserBase):
         self.listItems = []
         self.multiSelect = multiSelect
         self.noneItem = noneItem
+        self.clearImage = None
 
         self.layout = QtWidgets.QGridLayout(self)
         self.mainBox = gui.GroupBox(name)

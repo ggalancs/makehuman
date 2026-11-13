@@ -65,12 +65,10 @@ def logLevelToStr(levelCode):
     if levelCode in LEVEL_TO_STR:
         return LEVEL_TO_STR[levelCode]
     else:
+        # the name of the nearest known level below it (or the lowest one)
         levels = sorted(LEVEL_TO_STR.keys())
-        i = 0
-        while i < len(levels) and levelCode < levels[i]:
-            i += 1
-        i = min(i, len(levels)-1)
-        return levels[i].upper()
+        below = [level for level in levels if level <= levelCode]
+        return LEVEL_TO_STR[below[-1] if below else levels[0]].upper()
 
 def _toUnicode(msg, *args):
     """
@@ -96,29 +94,29 @@ def debug(msg, *args, **kwargs):
     try:
         logging.debug(msg, *args, **kwargs)
     except UnicodeError:
-        msg_ = _toUnicode(msg, args)
-        logging.debug(msg_, kwargs)
+        msg_ = _toUnicode(msg, *args)
+        logging.debug(msg_, **kwargs)
 
 def warning(msg, *args, **kwargs):
     try:
         logging.warning(msg, *args, **kwargs)
     except UnicodeError:
-        msg_ = _toUnicode(msg, args)
-        logging.warning(msg_, kwargs)
+        msg_ = _toUnicode(msg, *args)
+        logging.warning(msg_, **kwargs)
 
 def error(msg, *args, **kwargs):
     try:
         logging.error(msg, *args, **kwargs)
     except UnicodeError:
-        msg_ = _toUnicode(msg, args)
-        logging.error(msg_, kwargs)
+        msg_ = _toUnicode(msg, *args)
+        logging.error(msg_, **kwargs)
 
 def message(msg, *args, **kwargs):
     try:
         logging.info(msg, *args, **kwargs)
     except UnicodeError:
-        msg_ = _toUnicode(msg, args)
-        logging.info(msg_, kwargs)
+        msg_ = _toUnicode(msg, *args)
+        logging.info(msg_, **kwargs)
 
 # We have to make notice() appear to have been defined in the logging module
 # so that logging.findCaller() finds its caller, not notice() itself

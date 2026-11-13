@@ -314,7 +314,7 @@ def thoroughFindFile(filename, searchPaths=[], searchDefaultPaths=True):
     If nothing is found return the most probable filename.
     """
     # Ensure unix style path
-    filename.replace('\\', '/')
+    filename = filename.replace('\\', '/')
 
     if not isinstance(searchPaths, list):
         searchPaths = [searchPaths]
@@ -360,7 +360,8 @@ def search(paths, extensions, recursive=True, mutexExtensions=False):
             basep, ext = os.path.splitext(filepath)
             ext = ext[1:]
             if basep in discovered:
-                if extensions.index(ext) < extensions.index(discovered[basep]):
+                # the preference ignores case, the path keeps it
+                if extensions.index(ext.lower()) < extensions.index(discovered[basep].lower()):
                     discovered[basep] = ext
             else:
                 discovered[basep] = ext

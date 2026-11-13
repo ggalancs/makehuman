@@ -232,7 +232,7 @@ class AnimationTrack(object):
         return self.loop
 
     def setLooping(self, enabled):
-        self.looping = enabled
+        self.loop = enabled
 
     def getPlaytime(self):
         """
@@ -254,11 +254,12 @@ class AnimationTrack(object):
             if count == 0:
                 indxs.extend(list(range(frameI,frameI+self.nBones)))
             count = (count + 1) % dropFrames
-        data = self.data[indxs]
-        self.data = data
+        self._data = self._data[indxs]
+        if self.isBaked():
+            self._data_baked = self._data_baked[indxs]
         self.frameRate = newFrameRate
-        self.dataLen = len(self.data)
-        self.nFrames = self.dataLen/self.nBones
+        self.dataLen = len(self._data)
+        self.nFrames = self.dataLen // self.nBones
 
 class Pose(AnimationTrack):
     """
@@ -1286,6 +1287,7 @@ def loadPoseFromMhpFile(filepath, skel):
                 rows[2][0] = -rows[2][0]
 
                 mats[boneIdx] = np.array(rows)
+                valid_file = True
             else:
                 log.warning("Unknown keyword in mhp file: %s" % words[1])
 

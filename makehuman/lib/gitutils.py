@@ -131,7 +131,9 @@ def getBranchFromFile():
                 line = f.readline()
                 if line:
                     if line.startswith('ref'):
-                        branch = line.split('/')[-1].strip()
+                        # "ref: refs/heads/<branch>", and a branch name may contain slashes
+                        ref = line.partition(':')[2].strip()
+                        branch = ref[len('refs/heads/'):] if ref.startswith('refs/heads/') else ref.split('/')[-1]
                     else:
                         branch = 'HEAD'
 
