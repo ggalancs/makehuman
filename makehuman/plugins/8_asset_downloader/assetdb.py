@@ -335,6 +335,13 @@ class AssetDB():
     def _syncRemote1Finished(self, code=0, file=None):
         self.log.trace("Enter")
 
+        if code:
+            # The asset database could not be downloaded: keep the local one and say so
+            self.log.debug("Download of the asset database failed", (code, file))
+            if self._synconFinished is not None:
+                self._synconFinished(code, file)
+            return
+
         progress = Progress()
         current = self.overrideProgressAfterDownloads
         prog = float(current) / float(self.overrideProgressLength)

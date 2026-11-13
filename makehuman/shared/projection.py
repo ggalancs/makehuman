@@ -258,7 +258,8 @@ def mapSceneLighting(scn, object = None, res = (1024, 1024), border = 1):
 
     def getLightmap(light):
         lmap = mapLighting(calcLightPos(light), object.mesh, res, border)
-        return image_operations.Image(data = lmap.data * light.color.values)
+        # the software renderer gives RGBA, the GL one RGB: light the colour channels
+        return image_operations.Image(data = lmap.data[:, :, :3] * light.color.values)
 
     progress = Progress(1 + len(scn.lights))
 
@@ -369,7 +370,8 @@ def rasterizeHLines(dstImg, edges, delta):
     for i in range(len(x0)):
         x = np.arange(x0[i], x1[i])
         y = m[i] * (x + 0.5) + c[i]
-        data[np.floor(y).astype(int),x,:] = 255
+        # a UV of exactly 1.0 lands one pixel past the edge
+        data[np.clip(np.floor(y).astype(int), 0, data.shape[0]-1), np.clip(x, 0, data.shape[1]-1), :] = 255
         progress.step()
 
 def rasterizeVLines(dstImg, edges, delta):
@@ -397,7 +399,7 @@ def rasterizeVLines(dstImg, edges, delta):
     for i in range(len(y0)):
         y = np.arange(y0[i], y1[i]) + 0.5
         x = m[i] * y + c[i]
-        data[y.astype(int),np.floor(x).astype(int),:] = 255
+        data[np.clip(y.astype(int), 0, data.shape[0]-1), np.clip(np.floor(x).astype(int), 0, data.shape[1]-1), :] = 255
         progress.step()
 
 def mapUVSoft(mesh):

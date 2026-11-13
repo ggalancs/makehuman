@@ -192,7 +192,8 @@ _textureCache = {}
 
 def getTexture(path, cache=None):
     texture = None
-    cache = cache or _textureCache
+    if cache is None:  # an empty dict given by the caller is still its cache
+        cache = _textureCache
 
     if isinstance(path, Image):
         img = path
@@ -262,6 +263,8 @@ def reloadTextures():
     """
     log.message('Reloading all textures')
     for path in _textureCache:
+        if not _textureCache[path]:
+            continue  # the file failed to load: nothing to reload
         try:
             _textureCache[path].loadImage(path)
         except RuntimeError as _:
@@ -274,7 +277,7 @@ def reloadTexture(path):
     reference to it is kept.
     """
     log.message('Reloading texture %s', path)
-    if path not in _textureCache:
+    if not _textureCache.get(path):
         log.error('Cannot reload non-existing texture %s', path)
         return
     try:

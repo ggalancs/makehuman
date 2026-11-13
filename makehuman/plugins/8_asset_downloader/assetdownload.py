@@ -366,6 +366,10 @@ class AssetDownloadTaskView(gui3d.TaskView):
 
     def _onSyncFinished(self, code=0, file=None):
         self.log.trace("onSyncFinished")
+        if code:
+            self.showMessage("Could not download the asset database (error %s for %s). The community "
+                             "asset server may be unavailable; the local asset list was not changed." % (code, file))
+            return
         self.showMessage("Asset DB is now synchronized")
 
         self.authors = ["-- any --"]
