@@ -102,7 +102,7 @@ class Smoke(object):
         self.allowed_errors = []
         self.modal_accept = False
         first_record = len(self.collector.records)
-        entry = {"name": name, "running": True}
+        entry = {"name": name, "running": True, "started": round(time.time(), 2)}
         self.results.append(entry)
         self.flush()  # if the check hangs, the harness knows which one
         start = time.time()
@@ -570,11 +570,21 @@ class _WindowsOnMainScreen(QtCore.QObject):
     the placement of dialogs to the window manager and puts popups where the mouse is,
     which, with the app in the background as in these tests, is whatever screen is in use.
     Qt sends Show before it maps the native window, so moving it here places it before
-    anything is drawn. Every window shown is recorded in the results ("windows")."""
+    anything is drawn. A modal dialog is centred again by Cocoa on the screen in use when
+    its modal session starts, after Show: dialogs therefore stay transparent until they
+    are placed once more, a moment later. Every window shown is recorded ("windows")."""
 
     def __init__(self):
         super(_WindowsOnMainScreen, self).__init__()
         self.seen = []
+
+    @staticmethod
+    def _place(window, position):
+        try:
+            window.move(position)
+            window.setWindowOpacity(1.0)
+        except RuntimeError:  # closed and deleted in the meantime
+            pass
 
     def eventFilter(self, obj, event):
         if (event.type() == QtCore.QEvent.Show and isinstance(obj, QtWidgets.QWidget)
@@ -587,6 +597,9 @@ class _WindowsOnMainScreen(QtCore.QObject):
                 frame.moveLeft(max(area.left(), min(frame.left(), area.right() + 1 - frame.width())))
                 frame.moveTop(max(area.top(), min(frame.top(), area.bottom() + 1 - frame.height())))
                 obj.move(frame.topLeft())
+                if dialog:
+                    obj.setWindowOpacity(0.0)
+                    QtCore.QTimer.singleShot(50, lambda w=obj, at=frame.topLeft(): self._place(w, at))
             self.seen.append("%s type=%#x at %d,%d %dx%d" % ((type(obj).__name__, int(obj.windowType()))
                                                         + frame.getRect()))
         return False

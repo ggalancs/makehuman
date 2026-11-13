@@ -4,6 +4,8 @@ expression mixer, target explorer, measurements and settings."""
 import json
 import os
 
+import numpy as np
+
 import getpath
 import mh
 from core import G
@@ -204,10 +206,169 @@ def check_settings_tabs(smoke):
     return {"widgets": changed}
 
 
+def check_special_foot_pose(smoke):
+    """A garment can ask for a foot pose (e.g. high heels): wearing it mixes that pose into
+    the feet of the current pose, taking it off restores the pose that was there."""
+    import shutil
+    human = G.app.selectedHuman
+    source = os.path.abspath(getpath.getSysDataPath("clothes/female_casualsuit01/female_casualsuit01.mhclo"))
+    folder = getpath.getDataPath("clothes/smoke_heels")
+    os.makedirs(folder, exist_ok=True)
+    lines = []
+    for line in open(source, encoding="utf-8"):
+        key = line.split(" ", 1)[0]
+        if key == "name":
+            line = "name smoke_heels\n"
+        elif key == "uuid":
+            line = "uuid 0f6c3c7e-5b8a-4f7e-9f62-6d1e0c5a9b01\n"
+        elif key in ("obj_file", "material"):  # the meshes and material of the original
+            line = "%s %s\n" % (key, os.path.join(os.path.dirname(source), line.split()[1]))
+        lines.append(line)
+    lines.append("special_pose foot smoke_heels.bvh\n")
+    garment = os.path.join(folder, "smoke_heels.mhclo")
+    with open(garment, "w", encoding="utf-8") as f:
+        f.writelines(lines)
+    shutil.copy(getpath.getSysDataPath("poses/fight01.bvh"), getpath.getDataPath("special_poses/foot/smoke_heels.bvh"))
+
+    G.app.getTask("Pose/Animate", "Skeleton").chooseSkeleton(getpath.getSysDataPath("rigs/default.mhskel"))
+    G.app.getTask("Pose/Animate", "Expressions").chooseExpression(None)
+    G.app.getTask("Pose/Animate", "Pose").loadPose(getpath.getSysDataPath("poses/benchmark.bvh"))
+    pump(0.1)
+    base = human.getActiveAnimation().name
+    skel = human.getBaseSkeleton()  # poses are applied to it
+
+    def pose_of(*bones):
+        return [skel.getBone(b).matPose.copy() for b in bones]
+
+    # the garment's foot pose, loaded on its own, for reference
+    G.app.getTask("Pose/Animate", "Pose").loadPose(getpath.getSysDataPath("poses/fight01.bvh"))
+    pump(0.1)
+    foot_pose_feet = pose_of("foot.L", "toe1-1.R")
+    G.app.getTask("Pose/Animate", "Pose").loadPose(getpath.getSysDataPath("poses/benchmark.bvh"))
+    pump(0.1)
+    feet_before, arm_before = pose_of("foot.L", "toe1-1.R"), pose_of("upperarm01.L")
+    expect(any(not np.allclose(a, b) for a, b in zip(foot_pose_feet, feet_before)),
+           "the two poses have the same feet: this check could not see the mixing")
+
+    _category, clothes = _find_task("Clothes")
+    clothes.proxyFileSelected(garment)
+    pump(0.2)
+    expect(human.getActiveAnimation().name == "special-foot-pose", "foot pose not applied: %s" % human.getActiveAnimation().name)
+    feet, arm = pose_of("foot.L", "toe1-1.R"), pose_of("upperarm01.L")
+    expect(all(np.allclose(a, b, atol=1e-5) for a, b in zip(feet, foot_pose_feet)), "the feet do not follow the garment's pose")
+    expect(np.allclose(arm[0], arm_before[0]), "the foot pose moved an arm")
+
+    # another pose keeps the feet of the garment
+    G.app.getTask("Pose/Animate", "Pose").loadPose(getpath.getSysDataPath("poses/fight02.bvh"))
+    pump(0.1)
+    expect(human.getActiveAnimation().name == "special-foot-pose", "foot pose lost after a pose change")
+
+    clothes.proxyFileDeselected(garment)
+    pump(0.2)
+    expect(human.getActiveAnimation().name != "special-foot-pose" and not human.hasAnimation("special-foot-pose"),
+           "foot pose still active after taking the garment off: %s" % human.getActiveAnimation().name)
+    G.app.getTask("Pose/Animate", "Pose").loadPose(None)
+    return {"base_pose": base}
+
+
+def check_custom_targets(smoke):
+    """A target file put in the custom folder gets a slider after a rescan; deleting the
+    file and rescanning removes the slider and its effect on the model."""
+    import shutil
+    human = G.app.selectedHuman
+    category, tv = _find_task("Custom")
+    mh.changeTask(category, "Custom")
+    pump(0.1)
+    rescan = next(w for w in tv.optionsBox.children if getattr(w, "getLabel", lambda: "")() == "Rescan targets' folder")
+    folder = os.path.join(tv.targetsPath, "smoke")
+    os.makedirs(folder, exist_ok=True)
+    target = os.path.join(folder, "wide-nose.target")
+    shutil.copy(getpath.getSysDataPath("targets/nose/nose-scale-horiz-incr.target"), target)
+    human.applyAllTargets()
+    rest = human.meshData.coord.copy()
+
+    rescan.callEvent("onClicked", None)
+    pump(0.1)
+    expect(len(tv.sliders) == 1 and len(tv.modifiers) == 1, "custom sliders: %d" % len(tv.sliders))
+    slider = tv.sliders[0]
+    slider.edit.setText("%.2f" % slider.toDisplay(1.0))
+    slider._enter()
+    pump(0.3)
+    moved = np.abs(human.meshData.coord - rest).max()
+    expect(moved > 0.01, "custom target did not change the mesh (%.4f)" % moved)
+
+    tv.keepValues.setSelected(True)
+    rescan.callEvent("onClicked", None)  # the value survives a rescan
+    pump(0.1)
+    expect(abs(list(tv.modifiers.values())[0].getValue() - 1.0) < 1e-6, "value lost on rescan")
+    tv.keepValues.setSelected(False)
+
+    os.remove(target)
+    rescan.callEvent("onClicked", None)
+    pump(0.2)
+    expect(not tv.sliders and not tv.modifiers, "slider of a deleted target still there")
+    back = np.abs(human.meshData.coord - rest).max()
+    expect(back < 1e-5, "deleting the custom target left the model changed (%.5f)" % back)
+    mh.changeTask("Modelling", "Main")
+    return {"moved": round(float(moved), 4)}
+
+
+def check_install_user_plugins(smoke):
+    """Settings > User Plugins: install a zipped plugin and a plugin file (the file dialog
+    answers with them), activate the zipped one, and refuse to install it twice."""
+    import zipfile
+    from PyQt5 import QtWidgets
+    tv = G.app.getTask("Settings", "User Plugins")
+    mh.changeTask("Settings", "User Plugins")
+    pump(0.1)
+    code = "import gui3d\n\ndef load(app):\n    app.%s = True\n\ndef unload(app):\n    pass\n"
+    archive = smoke.out("user_plugins", "zipped.zip")
+    with zipfile.ZipFile(archive, "w") as zf:
+        zf.writestr("9_smoke_zipped/__init__.py", code % "smoke_zipped_loaded")
+    single = smoke.out("user_plugins", "9_smoke_file.py")
+    with open(single, "w") as f:
+        f.write(code % "smoke_file_loaded")
+    plugins = getpath.getPath("plugins")
+    answers = []
+    real_dialog = QtWidgets.QFileDialog.getOpenFileName
+    QtWidgets.QFileDialog.getOpenFileName = lambda *args, **kwargs: (answers.pop(0), "")
+    try:
+        answers.append(archive)
+        tv.installZipButton.callEvent("onClicked", None)
+        pump(0.1)
+        expect(os.path.isfile(os.path.join(plugins, "9_smoke_zipped", "__init__.py")), "zipped plugin not unpacked")
+        boxes = {box.name: box for box in tv.userPluginBox.children}
+        expect("9_smoke_zipped" in boxes, "installed plugin not listed: %s" % sorted(boxes))
+
+        boxes["9_smoke_zipped"].setSelected(True)
+        tv.activateButton.callEvent("onClicked", None)
+        pump(0.1)
+        expect(getattr(G.app, "smoke_zipped_loaded", False) and "9_smoke_zipped" in G.app.modules,
+               "activated plugin was not loaded")
+
+        answers.append(archive)  # again: its files exist, nothing is overwritten
+        tv.installZipButton.callEvent("onClicked", None)
+        pump(0.1)
+
+        answers.append(single)
+        tv.installPyButton.callEvent("onClicked", None)
+        pump(0.1)
+        expect(os.path.isfile(os.path.join(plugins, "9_smoke_file.py")), "plugin file not copied")
+        tv.reloadButton.callEvent("onClicked", None)
+        expect("9_smoke_file" in [box.name for box in tv.userPluginBox.children], "plugin file not listed")
+    finally:
+        QtWidgets.QFileDialog.getOpenFileName = real_dialog
+    mh.changeTask("Modelling", "Main")
+    return {"listed": sorted(box.name for box in tv.userPluginBox.children)}
+
+
 CHECKS = [
     ("render_subsurface_scattering", check_render_subsurface_scattering),
     ("material_editor", check_material_editor),
     ("expression_mixer", check_expression_mixer),
     ("target_explorer_and_measure", check_target_explorer_and_measure),
     ("settings_tabs", check_settings_tabs),
+    ("special_foot_pose", check_special_foot_pose),
+    ("custom_targets", check_custom_targets),
+    ("install_user_plugins", check_install_user_plugins),
 ]

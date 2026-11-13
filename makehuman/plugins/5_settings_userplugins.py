@@ -138,7 +138,7 @@ class UserPluginsTaskView(gui3d.TaskView):
                     gui3d.app.prompt('Warning', 'Potentially dangerous zip file, containing files with unsuitable path. '
                                                 'Inspect/fix the zip file before usage!', 'OK')
                 elif result == 4:
-                    gui3d.app.prompt('Error', 'Zip file {0:s} contains exiting files.'.format(filename), 'OK')
+                    gui3d.app.prompt('Error', 'Zip file {0:s} contains existing files.'.format(filename), 'OK')
                 elif result == 1:
                     gui3d.app.prompt('Error', 'Not a zip file {0:s}'.format(filename), 'OK')
             self.home = os.path.dirname(filename)
@@ -152,6 +152,7 @@ class UserPluginsTaskView(gui3d.TaskView):
                     shutil.copy2(filename, getpath.getPath('plugins'))
                 except OSError as e:
                     gui3d.app.prompt('Error', 'Failed to copy {0:s} to user plugins folder'.format(filename), 'OK')
+                    return
                 self.updatePluginList()
                 gui3d.app.prompt('Info', 'The plugin copied successfully. To activate, check '
                                  'the plugin in the list and press the "Activate"-Button or restart MakeHuman.',

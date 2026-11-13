@@ -83,7 +83,7 @@ def load(app):
                     log.warning('Backup file %s already exists.' % backup_filepath)
                     hasFailed = True
 
-                if filecmp.cmp(filepath, backup_filepath, shallow=False) and not hasFailed:
+                if not hasFailed and filecmp.cmp(filepath, backup_filepath, shallow=False):
                     log.message('Created backup file: %s' % backup_filepath)
                     try:
                         with open(filepath, 'w') as f:
