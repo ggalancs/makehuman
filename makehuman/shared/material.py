@@ -1390,6 +1390,12 @@ class Material(object):
                 newPath = os.path.join(exportPath, os.path.basename(tPath))
 
             if tPath:
+                if not os.path.isfile(tPath):
+                    # Community assets are sometimes published without all
+                    # their textures; skip it instead of aborting the export.
+                    log.warning("Material %s: texture %s not found, not exported: %s", self.name, tName, tPath)
+                    del textures[tName]
+                    continue
                 shutil.copy(tPath, newPath)
 
             textures[tName] = newPath
