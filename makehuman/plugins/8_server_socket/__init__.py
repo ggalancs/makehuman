@@ -198,6 +198,11 @@ class SocketTaskView(gui3d.TaskView):
         #self.addMessage("Closing socket.")
         if self.workerthread:
             self.workerthread.stopListening()
+            # Dropping the last reference to a running QThread aborts the whole
+            # process ("QThread: Destroyed while thread is still running"), so
+            # wait for run() to return; closing the socket wakes accept().
+            if not self.workerthread.wait(5000):
+                self.log.error("Socket server thread did not stop within 5s")
         self.workerthread = None
 
 

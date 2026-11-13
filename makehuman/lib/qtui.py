@@ -735,14 +735,31 @@ class Application(QtWidgets.QApplication, events3d.EventHandler):
         self.callAsync(self.started)
         self.messages.start()
         self.exec_()
+        # GL calls need the canvas context, which is only current during paint events
+        if self.mainwin and self.mainwin.canvas:
+            self.mainwin.canvas.makeCurrent()
         gl.OnExit()
+        # Hide the main window now, while every widget is intact. Otherwise it
+        # is hidden from inside its own destructor during PyQt's exit cleanup,
+        # and the activation-change events sent then reach child widgets that
+        # are already half destroyed (segfault on macOS).
+        if self.mainwin:
+            self.mainwin.hide()
 
     def stop(self):
+        # stop() used to end the process; now it returns, so make it run once
+        if getattr(self, '_stopping', False):
+            return
+        self._stopping = True
         log.notice("ABOUT TO STOP APPLICATION")
         # Explicitly stop thread to avoid a potential segfault on linux
         self.messages.stop()
         self.callEvent('onStop', None)
-        sys.exit()
+        # Leave the event loop and let start() return. Calling sys.exit() here
+        # finalizes Python from inside a Qt slot while the loop is still running:
+        # PyQt's exit cleanup then deletes the main window while it is still
+        # receiving events, which segfaults on macOS.
+        self.quit()
         
     def redraw(self):
         self.logger_redraw.debug('Application.redraw')

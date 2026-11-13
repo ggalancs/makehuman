@@ -1348,7 +1348,7 @@ def assertOrthogonal(mat):
     for i in range(3):
         for j in range(3):
             if abs(diff[i,j]) > 1e-5:
-                raise AssertionError("Not orthogonal: diff[%d,%d] = %g\n%s\n\%s" % (i, j, diff[i,j], mat, prod))
+                raise AssertionError("Not orthogonal: diff[%d,%d] = %g\n%s\n\\%s" % (i, j, diff[i,j], mat, prod))
     return True
 
 

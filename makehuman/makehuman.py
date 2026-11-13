@@ -139,7 +139,10 @@ def set_sys_path():
     Append local module folders to python search path.
     """
     #[BAL 07/11/2013] make sure we're in the right directory
-    if not sys.platform.startswith('darwin'): # Causes issues with py2app builds on MAC
+    # The darwin branch below is only meant for py2app bundles (cwd is
+    # Contents/MacOS, data lives in ../Resources). A source checkout on macOS
+    # behaves like any other platform.
+    if not (sys.platform.startswith('darwin') and isBuild()):
         os.chdir(getCwd())
         syspath = ["./", "./lib", "./apps", "./shared", "./apps/gui","./core"]
         syspath.extend(sys.path)
@@ -169,17 +172,19 @@ def get_platform_paths():
         stdout_filename = os.path.join(home, "python_out.txt")
         stderr_filename = os.path.join(home, "python_err.txt")
 
-    elif sys.platform.startswith("darwin"):
+    elif sys.platform.startswith("darwin") and isBuild():
+        # An app bundle started from Finder has no terminal; a source run does.
         stdout_filename = os.path.join(home, "makehuman-output.txt")
         stderr_filename = os.path.join(home, "makehuman-error.txt")
 
 def redirect_standard_streams():
     import locale
     encoding = locale.getpreferredencoding()
+    # Line buffered, so the files reflect progress while the app is running
     if stdout_filename:
-        sys.stdout = open(stdout_filename, "w", encoding=encoding, errors="replace")
+        sys.stdout = open(stdout_filename, "w", encoding=encoding, errors="replace", buffering=1)
     if stderr_filename:
-        sys.stderr = open(stderr_filename, "w", encoding=encoding, errors="replace")
+        sys.stderr = open(stderr_filename, "w", encoding=encoding, errors="replace", buffering=1)
 
 def close_standard_streams():
     sys.stdout.close()
@@ -395,13 +400,16 @@ Homepage: %s""" % (self.author, self.license, self.copyright, self.homepage)
     def toNumpyString(self):
         def _packStringDict(stringDict):
             import numpy as np
-            text = ''
+            text = b''
             index = []
             for key,value in list(stringDict.items()):
+                # Lengths are byte counts: the unpacker slices the UTF-8 buffer
+                key = key.encode('utf-8')
+                value = value.encode('utf-8')
                 index.append(len(key))
                 index.append(len(value))
                 text += key + value
-            text = np.fromstring(text, dtype='S1')
+            text = np.frombuffer(text, dtype='S1')
             index = np.array(index, dtype=np.uint32)
             return np.array([text, index], dtype=object)
 
@@ -415,8 +423,8 @@ Homepage: %s""" % (self.author, self.license, self.copyright, self.homepage)
                 l_key = index[i]
                 l_val = index[i+1]
 
-                key = str(text[last:last+l_key].tostring(), 'utf8')
-                val = str(text[last+l_key:last+l_key+l_val].tostring(), 'utf8')
+                key = str(text[last:last+l_key].tobytes(), 'utf8')
+                val = str(text[last+l_key:last+l_key+l_val].tobytes(), 'utf8')
                 stringDict[key] = val
 
                 last += (l_key + l_val)

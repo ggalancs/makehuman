@@ -58,26 +58,26 @@ If the following content is contained in a plain text file called \"tags.txt\"..
 
 ::
 
-    c:\MakeHuman\objectlibrary\obj1.obj hand long fist clenched
-    c:\MakeHuman\objectlibrary\obj2.obj leg calf muscular
-    c:\MakeHuman\objectlibrary\obj3.obj nose broad hooked
-    c:\MakeHuman\objectlibrary\obj4.obj eye brown 
-    c:\MakeHuman\objectlibrary\obj5.obj eyelash thick long
-    c:\MakeHuman\objectlibrary\obj6.obj lips lush
-    c:\MakeHuman\objectlibrary\obj7.obj sheyenne indian aboriginal
+    c:\\MakeHuman\\objectlibrary\\obj1.obj hand long fist clenched
+    c:\\MakeHuman\\objectlibrary\\obj2.obj leg calf muscular
+    c:\\MakeHuman\\objectlibrary\\obj3.obj nose broad hooked
+    c:\\MakeHuman\\objectlibrary\\obj4.obj eye brown 
+    c:\\MakeHuman\\objectlibrary\\obj5.obj eyelash thick long
+    c:\\MakeHuman\\objectlibrary\\obj6.obj lips lush
+    c:\\MakeHuman\\objectlibrary\\obj7.obj sheyenne indian aboriginal
     ...
 
     the following examples illustrate the use of the load search and save functions:
 
     ::
 
-    r1 = loadRecord('tags.txt', 'c:\MakeHuman\objectlibrary\obj2.obj')
-    // Sets r1 to be the list [\"c:\MakeHuman\objectlibrary\obj2.obj\",\"leg\",\"calf\",\"muscular\"]
+    r1 = loadRecord('tags.txt', 'c:\\MakeHuman\\objectlibrary\\obj2.obj')
+    // Sets r1 to be the list [\"c:\\MakeHuman\\objectlibrary\\obj2.obj\",\"leg\",\"calf\",\"muscular\"]
 
     r2 = searchRecord('tags.txt', 'eye')
-    // Sets r2 to be the list [\"c:\MakeHuman\objectlibrary\obj4.obj\",\"c:\MakeHuman\objectlibrary\obj5.obj\",\"c:\MakeHuman\objectlibrary\obj7.obj\"]
+    // Sets r2 to be the list [\"c:\\MakeHuman\\objectlibrary\\obj4.obj\",\"c:\\MakeHuman\\objectlibrary\\obj5.obj\",\"c:\\MakeHuman\\objectlibrary\\obj7.obj\"]
 
-    recordToSave = 'c:\MakeHuman\objectlibrary\obj5.obj eyelash thick long black'
+    recordToSave = 'c:\\MakeHuman\\objectlibrary\\obj5.obj eyelash thick long black'
     saveRecord('tags.txt', recordToSave)
     // Replaces the existing 'obj5' record with the new record in the file on disk.
 

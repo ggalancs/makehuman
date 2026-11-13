@@ -63,8 +63,8 @@ def saveMHM(path):
     img = mh.grabScreen(
         (G.windowWidth - size) // 2, (G.windowHeight - size) // 2, size, size)
 
-    # Resize thumbnail to max 128x128
-    if size > 128:
+    # Resize thumbnail to max 128x128 (on HiDPI screens the grab is larger than size)
+    if img.width > 128 or img.height > 128:
         img.resize(128, 128)
     img.save(os.path.join(savedir, name + '.thumb'))
 

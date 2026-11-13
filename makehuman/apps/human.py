@@ -572,7 +572,7 @@ class Human(guicommon.Object, animation.AnimatedMesh):
         self.setAge(age, updateModifier)
 
     def _setAgeVals(self):
-        """
+        r"""
         New system (A8):
         ----------------
 
@@ -1461,8 +1461,8 @@ class Human(guicommon.Object, animation.AnimatedMesh):
         def _compare_versions(mhmVersion,pgmVersion):
             """ Return true if major+minor matches, false if they do not. Ignore patch number. """
             import re
-            match1 = re.match("v(\d)\.(\d)",mhmVersion)
-            match2 = re.match("v(\d)\.(\d)",pgmVersion)
+            match1 = re.match(r"v(\d)\.(\d)",mhmVersion)
+            match2 = re.match(r"v(\d)\.(\d)",pgmVersion)
             return match1.groups(1) == match2.groups(1) and match1.groups(2) == match2.groups(2)
 
         def _get_version(lineData):

@@ -152,7 +152,7 @@ class BVH():
             import re
             if not boneName:
                 return boneName
-            r = re.search("(.*)_\d+$", boneName)
+            r = re.search(r"(.*)_\d+$", boneName)
             if r:
                 return r.group(1)
             return boneName

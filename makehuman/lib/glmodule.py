@@ -78,24 +78,65 @@ def safeRun(func: Callable, *args, fallbacks: List[Callable] = None, **kwargs):
             return fallback(*args, **kwargs)
 
 
+def devicePixelRatio():
+    """
+    Framebuffer pixels per logical (Qt widget) pixel: 2.0 on Retina/HiDPI
+    displays, 1.0 elsewhere. G.windowWidth/G.windowHeight, mouse coordinates
+    and the camera work in logical pixels; the GL framebuffer is in device pixels.
+    """
+    canvas = getattr(G, 'canvas', None)
+    if canvas is None:
+        return 1.0
+    return canvas.devicePixelRatioF()
+
+def framebufferSize():
+    """Size of the canvas framebuffer in device pixels."""
+    ratio = devicePixelRatio()
+    return int(round(G.windowWidth * ratio)), int(round(G.windowHeight * ratio))
+
+def toFramebufferPixel(x, y):
+    """
+    Logical canvas coordinates (origin top-left) to framebuffer column and row
+    (origin bottom-left, as glReadPixels expects). Returns None when outside.
+    """
+    width, height = framebufferSize()
+    ratio = devicePixelRatio()
+    fx = int(x * ratio)
+    fy = height - 1 - int(y * ratio)
+    if fx < 0 or fx >= width or fy < 0 or fy >= height:
+        return None
+    return fx, fy
+
 def grabScreen(x, y, width, height, filename = None, productionRender=False):
+    """
+    Grab a region of the canvas, given in logical pixels. The returned image has
+    the resolution of the framebuffer, i.e. it is devicePixelRatio() times
+    larger than the requested region on HiDPI displays.
+    """
     if width <= 0 or height <= 0:
         raise RuntimeError("width or height is 0")
 
     log.debug('grabScreen: %d %d %d %d', x, y, width, height)
 
+    # Work in framebuffer (device) pixels from here on
+    ratio = devicePixelRatio()
+    fbWidth, fbHeight = framebufferSize()
+    x, y = int(round(x * ratio)), int(round(y * ratio))
+    width, height = int(round(width * ratio)), int(round(height * ratio))
+
     # Draw before grabbing, to make sure we grab a rendering and not a picking buffer
+    glViewport(0, 0, fbWidth, fbHeight)
     draw(productionRender)
 
     sx0 = x
-    sy0 = G.windowHeight - y - height
+    sy0 = fbHeight - y - height
     sx1 = sx0 + width
     sy1 = sy0 + height
 
     sx0 = max(sx0, 0)
-    sx1 = min(sx1, G.windowWidth)
+    sx1 = min(sx1, fbWidth)
     sy0 = max(sy0, 0)
-    sy1 = min(sy1, G.windowHeight)
+    sy1 = min(sy1, fbHeight)
 
     rwidth = sx1 - sx0
     rwidth -= rwidth % 4
@@ -131,8 +172,7 @@ pickingBuffer = None
 pickingBufferDirty = True
 
 def updatePickingBuffer():
-    width = G.windowWidth
-    height = G.windowHeight
+    width, height = framebufferSize()
     rwidth = (width + 3) // 4 * 4
 
     # Resize the buffer in case the window size has changed
@@ -148,7 +188,9 @@ def updatePickingBuffer():
     if have_multisample:
         glDisable(GL_MULTISAMPLE)
 
-    # Clear screen
+    # Clear screen. The viewport is whatever was set last (Qt sets it to the
+    # framebuffer size before paintGL), so set it explicitly.
+    glViewport(0, 0, width, height)
     glClearColor(0.0, 0.0, 0.0, 0.0)
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
 
@@ -191,10 +233,10 @@ def getPickedColor(x = None, y = None):
     elif x is None or y is None:
         return (0, 0, 0)
 
-    y = G.windowHeight - y
-
-    if y < 0 or y >= G.windowHeight or x < 0 or x >= G.windowWidth:
+    pixel = toFramebufferPixel(x, y)
+    if pixel is None:
         return (0, 0, 0)
+    x, y = pixel
 
     if pickingBuffer is None or pickingBufferDirty:
         updatePickingBuffer()
@@ -211,10 +253,10 @@ def queryDepth(x, y):
     elif x is None or y is None:
         return (0, 0, 0)
 
-    y = G.windowHeight - y
-
-    if y < 0 or y >= G.windowHeight or x < 0 or x >= G.windowWidth:
+    pixel = toFramebufferPixel(x, y)
+    if pixel is None:
         return 0.0
+    x, y = pixel
 
     # We read only the depth value for the required pixel directly from GPU memory
     # Without caching the depth buffer
@@ -231,8 +273,9 @@ def reshape(w, h):
         # Prevent a division by zero when minimising the window
         if h == 0:
             h = 1
-        # Set the drawable region of the window
-        glViewport(0, 0, w, h)
+        # Set the drawable region of the window (w, h are logical pixels)
+        ratio = devicePixelRatio()
+        glViewport(0, 0, int(round(w * ratio)), int(round(h * ratio)))
         # set up the projection matrix
         glMatrixMode(GL_PROJECTION)
         glLoadIdentity()
@@ -921,7 +964,7 @@ def renderToBuffer(width, height, productionRender = True):
     G.windowHeight = oldHeight
     # glPushAttrib(GL_VIEWPORT_BIT)
     glPopAttrib()
-    glViewport(0, 0, oldWidth, oldHeight)
+    glViewport(0, 0, *framebufferSize())
 
     return surface
 
@@ -1003,7 +1046,7 @@ def renderAlphaMask(width, height, productionRender = True):
     G.windowHeight = oldHeight
     #glPushAttrib(GL_VIEWPORT_BIT)
     glPopAttrib()
-    glViewport(0, 0, oldWidth, oldHeight)
+    glViewport(0, 0, *framebufferSize())
 
     return surface
 

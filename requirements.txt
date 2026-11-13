@@ -1,3 +1,5 @@
 numpy>=1.17.4
-PyQt5>=5.12.8
+PyQt5>=5.12.8; sys_platform != "darwin"
+# 5.15.10 is the first PyQt5 release with native Apple Silicon (arm64) wheels
+PyQt5>=5.15.10; sys_platform == "darwin"
 PyOpenGL>=3.1.0
