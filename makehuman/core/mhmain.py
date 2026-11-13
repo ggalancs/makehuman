@@ -1142,10 +1142,12 @@ class MHApplication(gui3d.Application, mh.Application):
             action.setIcon(gui.Action.getIcon(action.name))
 
     def getLookAndFeelStyles(self):
-        return [ str(style) for style in gui.QtGui.QStyleFactory.keys() ]
+        from PyQt5.QtWidgets import QStyleFactory  # QtGui in Qt4, QtWidgets in Qt5
+        return [ str(style) for style in QStyleFactory.keys() ]
 
     def setLookAndFeel(self, platform):
-        style = gui.QtGui.QStyleFactory.create(platform)
+        from PyQt5.QtWidgets import QStyleFactory
+        style = QStyleFactory.create(platform)
         self.setStyle(style)
 
     def getLookAndFeel(self):
@@ -1443,7 +1445,7 @@ class MHApplication(gui3d.Application, mh.Application):
         """Retrieve the plugin or handler that handles the loading of the
         specified keyword from MHM file.
         """
-        self.loadHandlers.get(keyword, None)
+        return self.loadHandlers.get(keyword, None)
 
     # Save handlers
 

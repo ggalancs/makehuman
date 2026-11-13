@@ -234,8 +234,14 @@ class GroupBox(QtWidgets.QGroupBox, Widget):
 
 class SliderStyle(QtWidgets.QCommonStyle):
     def __init__(self, parent):
-        self.__parent = parent
         super(SliderStyle, self).__init__()
+
+    @property
+    def __parent(self):
+        # Delegate to the current application style. Keeping the style that existed
+        # when the first slider was created broke when the look and feel changes at run
+        # time (Settings): Qt deletes that style, and the next call aborted the app.
+        return QtWidgets.QApplication.style()
 
     def drawComplexControl(self, control, option, painter, widget = None):
         return self.__parent.drawComplexControl(control, option, painter, widget)
