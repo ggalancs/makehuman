@@ -39,170 +39,6 @@ convert_rad_to_deg_iter = units_convertor_iter("radian", "degree")
 # ##### Templates #####
 # TODO: check all those "default" values, they should match Blender's default as much as possible, I guess?
 
-def fbx_template_def_globalsettings(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict()
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"GlobalSettings", b"", props, nbr_users, [False])
-
-def fbx_template_def_null(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict((
-        (b"Color", ((0.8, 0.8, 0.8), "p_color_rgb", False)),
-        (b"Size", (100.0, "p_double", False)),
-        (b"Look", (1, "p_enum", False)),  # Cross (0 is None, i.e. invisible?).
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"NodeAttribute", b"FbxNull", props, nbr_users, [False])
-
-
-def fbx_template_def_bone(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict()
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"NodeAttribute", b"LimbNode", props, nbr_users, [False])
-
-
-def fbx_template_def_geometry(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict((
-        (b"Color", ((0.8, 0.8, 0.8), "p_color_rgb", False)),
-        (b"BBoxMin", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"BBoxMax", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"Primary Visibility", (True, "p_bool", False)),
-        (b"Casts Shadows", (True, "p_bool", False)),
-        (b"Receive Shadows", (True, "p_bool", False)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"Geometry", b"FbxMesh", props, nbr_users, [False])
-
-
-def fbx_template_def_material(scene, settings, override_defaults=None, nbr_users=0):
-    # WIP...
-    props = OrderedDict((
-        (b"ShadingModel", ("Phong", "p_string", False)),
-        (b"MultiLayer", (False, "p_bool", False)),
-        # Lambert-specific.
-        (b"EmissiveColor", ((0.0, 0.0, 0.0), "p_color", True)),
-        (b"EmissiveFactor", (1.0, "p_number", True)),
-        (b"AmbientColor", ((0.2, 0.2, 0.2), "p_color", True)),
-        (b"AmbientFactor", (1.0, "p_number", True)),
-        (b"DiffuseColor", ((0.8, 0.8, 0.8), "p_color", True)),
-        (b"DiffuseFactor", (1.0, "p_number", True)),
-        (b"TransparentColor", ((0.0, 0.0, 0.0), "p_color", True)),
-        (b"TransparencyFactor", (0.0, "p_number", True)),
-        (b"Opacity", (1.0, "p_number", True)),
-        (b"NormalMap", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"Bump", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"BumpFactor", (1.0, "p_double", False)),
-        (b"DisplacementColor", ((0.0, 0.0, 0.0), "p_color_rgb", False)),
-        (b"DisplacementFactor", (1.0, "p_double", False)),
-        (b"VectorDisplacementColor", ((0.0, 0.0, 0.0), "p_color_rgb", False)),
-        (b"VectorDisplacementFactor", (1.0, "p_double", False)),
-        # Phong-specific.
-        (b"SpecularColor", ((0.2, 0.2, 0.2), "p_color", True)),
-        (b"SpecularFactor", (1.0, "p_number", True)),
-        # Not sure about the name, importer uses this (but ShininessExponent for tex prop name!)
-        # And in fbx exported by sdk, you have one in template, the other in actual material!!! :/
-        # For now, using both.
-        (b"Shininess", (20.0, "p_number", True)),
-        (b"ShininessExponent", (20.0, "p_number", True)),
-        (b"ReflectionColor", ((0.0, 0.0, 0.0), "p_color", True)),
-        (b"ReflectionFactor", (1.0, "p_number", True)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"Material", b"FbxSurfacePhong", props, nbr_users, [False])
-
-
-def fbx_template_def_texture_file(scene, settings, override_defaults=None, nbr_users=0):
-    # WIP...
-    # XXX Not sure about all names!
-    props = OrderedDict((
-        (b"TextureTypeUse", (0, "p_enum", False)),  # Standard.
-        (b"AlphaSource", (2, "p_enum", False)),  # Black (i.e. texture's alpha), XXX name guessed!.
-        (b"Texture alpha", (1.0, "p_double", False)),
-        (b"PremultiplyAlpha", (True, "p_bool", False)),
-        (b"CurrentTextureBlendMode", (1, "p_enum", False)),  # Additive...
-        (b"CurrentMappingType", (0, "p_enum", False)),  # UV.
-        (b"UVSet", ("default", "p_string", False)),  # UVMap name.
-        (b"WrapModeU", (0, "p_enum", False)),  # Repeat.
-        (b"WrapModeV", (0, "p_enum", False)),  # Repeat.
-        (b"UVSwap", (False, "p_bool", False)),
-        (b"Translation", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"Rotation", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"Scaling", ((1.0, 1.0, 1.0), "p_vector_3d", False)),
-        (b"TextureRotationPivot", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        (b"TextureScalingPivot", ((0.0, 0.0, 0.0), "p_vector_3d", False)),
-        # Not sure about those two...
-        (b"UseMaterial", (False, "p_bool", False)),
-        (b"UseMipMap", (False, "p_bool", False)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"Texture", b"FbxFileTexture", props, nbr_users, [False])
-
-
-def fbx_template_def_pose(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict()
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"Pose", b"", props, nbr_users, [False])
-
-
-def fbx_template_def_deformer(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict()
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"Deformer", b"", props, nbr_users, [False])
-
-
-def fbx_template_def_animstack(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict((
-        (b"Description", ("", "p_string", False)),
-        (b"LocalStart", (0, "p_timestamp", False)),
-        (b"LocalStop", (0, "p_timestamp", False)),
-        (b"ReferenceStart", (0, "p_timestamp", False)),
-        (b"ReferenceStop", (0, "p_timestamp", False)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"AnimationStack", b"FbxAnimStack", props, nbr_users, [False])
-
-
-def fbx_template_def_animlayer(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict((
-        (b"Weight", (100.0, "p_number", True)),
-        (b"Mute", (False, "p_bool", False)),
-        (b"Solo", (False, "p_bool", False)),
-        (b"Lock", (False, "p_bool", False)),
-        (b"Color", ((0.8, 0.8, 0.8), "p_color_rgb", False)),
-        (b"BlendMode", (0, "p_enum", False)),
-        (b"RotationAccumulationMode", (0, "p_enum", False)),
-        (b"ScaleAccumulationMode", (0, "p_enum", False)),
-        (b"BlendModeBypass", (0, "p_ulonglong", False)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"AnimationLayer", b"FbxAnimLayer", props, nbr_users, [False])
-
-
-def fbx_template_def_animcurvenode(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict((
-        (FBX_ANIM_PROPSGROUP_NAME.encode(), (None, "p_compound", False)),
-    ))
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"AnimationCurveNode", b"FbxAnimCurveNode", props, nbr_users, [False])
-
-
-def fbx_template_def_animcurve(scene, settings, override_defaults=None, nbr_users=0):
-    props = OrderedDict()
-    if override_defaults is not None:
-        props.update(override_defaults)
-    return FBXTemplate(b"AnimationCurve", b"", props, nbr_users, [False])
-
-
 # ##### Generators for connection elements. #####
 
 def elem_connection(elem, c_type, uid_src, uid_dst, prop_dst=None):
@@ -214,28 +50,6 @@ def elem_connection(elem, c_type, uid_src, uid_dst, prop_dst=None):
 
 
 # ##### FBX objects generators. #####
-
-def fbx_data_element_custom_properties(props, bid):
-    """
-    Store custom properties of blender ID bid (any mapping-like object, in fact) into FBX properties props.
-    """
-    for k, v in bid.items():
-        list_val = getattr(v, "to_list", lambda: None)()
-
-        if isinstance(v, str):
-            elem_props_set(props, "p_string", k.encode(), v, custom=True)
-        elif isinstance(v, int):
-            elem_props_set(props, "p_integer", k.encode(), v, custom=True)
-        elif isinstance(v, float):
-            elem_props_set(props, "p_double", k.encode(), v, custom=True)
-        elif list_val:
-            if len(list_val) == 3:
-                elem_props_set(props, "p_vector", k.encode(), list_val, custom=True)
-            else:
-                elem_props_set(props, "p_string", k.encode(), str(list_val), custom=True)
-        else:
-            elem_props_set(props, "p_string", k.encode(), str(v), custom=True)
-
 
 def fbx_data_bindpose_element(objectsParent, key, id, count):
     """
@@ -274,7 +88,6 @@ def fbx_data_mesh_element(objectsParent, key, id, properties, coord, fvert, vnor
 
     for pname, ptype, value, animatable, custom in get_properties(properties):
         elem_props_set(props, ptype, pname, value, animatable, custom)
-        #fbx_data_element_custom_properties(props, me)
 
 
     # Vertex cos.

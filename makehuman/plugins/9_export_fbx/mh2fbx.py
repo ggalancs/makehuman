@@ -91,12 +91,6 @@ def exportFbx(filepath, config):
     for mesh in meshes:
         mesh.name = fbx_utils.getMeshName(mesh, name)
 
-    useAnim = False
-    if useAnim:
-        # TODO allow exporting poseunits
-        action = None
-    else:
-        action = None
 
     G.app.progress(0.5, text="Exporting %s" % filepath)
 
@@ -141,7 +135,7 @@ def exportFbx(filepath, config):
 
     # 2) FBX template definitions
     # GlobalSettings template definition
-    fbx_header.writeObjectDefs(fp, meshes, skel, action, config)
+    fbx_header.writeObjectDefs(fp, meshes, skel, config)
     fbx_utils.debugWrite(genTree(fp))
     # Skeleton template definition
     fbx_skeleton.writeObjectDefs(fp, meshes, skel, config)
@@ -155,9 +149,6 @@ def exportFbx(filepath, config):
     # Skin deformer template definition
     fbx_deformer.writeObjectDefs(fp, meshes, skel, config)
     fbx_utils.debugWrite(genTree(fp))
-    # Animation template definition
-    if useAnim:
-        fbx_anim.writeObjectDefs(fp, action, config)
     if not config.binary: fp.write('}\n\n')
 
     fbx_utils.debugWrite(genTree(fp))
@@ -170,9 +161,6 @@ def exportFbx(filepath, config):
     if config.useMaterials:
         fbx_material.writeObjectProps(fp, meshes, config)
     fbx_deformer.writeObjectProps(fp, meshes, skel, config)
-    if useAnim:
-        # TODO support binary FBX animations export
-        fbx_anim.writeObjectProps(fp, action, skel, config)
     if not config.binary: fp.write('}\n\n')
 
     fbx_utils.debugWrite(genTree(fp))
@@ -186,13 +174,10 @@ def exportFbx(filepath, config):
     fbx_deformer.writeLinks(fp, meshes, skel, config)
     if config.useMaterials:
         fbx_material.writeLinks(fp, meshes, config)
-    if useAnim:
-        fbx_anim.writeLinks(fp, action, config, config)
     if not config.binary: fp.write('}\n\n')
 
-    # 5) FBX animations (takes)
-    # TODO support binary FBX export
-    fbx_anim.writeTakes(fp, action, config)
+    # 5) FBX takes (MakeHuman exports no animations to FBX)
+    fbx_anim.writeTakes(fp, config)
     if config.binary:
         from . import encode_bin
         root = fp

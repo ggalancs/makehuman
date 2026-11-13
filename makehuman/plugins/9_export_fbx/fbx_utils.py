@@ -167,6 +167,8 @@ def opLink(fp, child, parent, channel, config):
         fbx_binary.elem_connection(elem, b"OP", cid, pid, channel)
         return
 
+    if isinstance(channel, bytes):  # the binary writer's form; the text file needs the text
+        channel = channel.decode('utf-8')
     fp.write(
 '    ;%s, %s\n' % (child, parent) +
 '    C: "OP",%d,%d, "%s"\n' % (cid, pid, channel) +

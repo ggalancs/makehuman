@@ -91,8 +91,12 @@ def check_export_options(smoke):
     for binary in (True, False):
         fbx.binary.setSelected(binary)
         fbx.hiddenGeom.setSelected(not binary)
-        head = open(_export(smoke, fbx, "fbx_binary_%s" % binary, "fbx"), "rb").read(20)
-        expect(head.startswith(b"Kaydara FBX Binary") == binary, "FBX binary=%s starts with %r" % (binary, head))
+        data = open(_export(smoke, fbx, "fbx_binary_%s" % binary, "fbx"), "rb").read()
+        expect(data.startswith(b"Kaydara FBX Binary") == binary, "FBX binary=%s starts with %r" % (binary, data[:20]))
+        if not binary:
+            # properties are text, not Python bytes reprs such as "b'Path'"
+            reprs = data.count(b"\"b'")
+            expect(reprs == 0, "ASCII FBX has %d bytes reprs, e.g. %r" % (reprs, data[data.find(b"\"b'") - 20:][:80]))
     fbx.binary.setSelected(True)
     fbx.hiddenGeom.setSelected(False)
 

@@ -441,6 +441,10 @@ def get_ascii_properties(properties, indent=0):
 
     return '\n'.join(result)
 
+def _ascii(v):
+    """The binary writer works with bytes; the ASCII file needs their text, not b'...'."""
+    return v.decode('utf-8') if isinstance(v, bytes) else v
+
 def get_ascii_property(name, ptype, value, animatable=False, custom=False):
     if isinstance(value, tuple):
         value = list(value)
@@ -451,11 +455,12 @@ def get_ascii_property(name, ptype, value, animatable=False, custom=False):
     ptype = FBX_PROPERTIES_DEFINITIONS[ptype]
 
     if len(ptype) > 2 and 'string' in ptype[2]:
-        value = ['"%s"' % v for v in value]
+        value = ['"%s"' % _ascii(v) for v in value]
     elif len(ptype) > 2 and 'int' in ptype[2]:
         value = [int(v) for v in value]
 
-    return 'P: "%s", "%s", "%s", "%s", %s' % (name, ptype[0], ptype[1], flags, (','.join([str(v) for v in value])))
+    return 'P: "%s", "%s", "%s", "%s", %s' % (_ascii(name), _ascii(ptype[0]), _ascii(ptype[1]), _ascii(flags),
+                                             (','.join([str(v) for v in value])))
 
 def _elem_props_set(elem, ptype, name, value, flags):
     p = elem_data_single_string(elem, b"P", name)

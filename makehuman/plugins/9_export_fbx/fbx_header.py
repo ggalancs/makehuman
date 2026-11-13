@@ -39,7 +39,6 @@ from . import fbx_skeleton
 from . import fbx_mesh
 from . import fbx_deformer
 from . import fbx_material
-from . import fbx_anim
 
 
 def writeHeader(fp, filepath, config):
@@ -159,7 +158,7 @@ References:  {
 """)
 
 
-def writeObjectDefs(fp, meshes, skel, action, config):
+def writeObjectDefs(fp, meshes, skel, config):
     count = (
               fbx_skeleton.countObjects(skel) +
               fbx_mesh.countObjects(meshes) +
@@ -168,9 +167,6 @@ def writeObjectDefs(fp, meshes, skel, action, config):
             )
     if config.useMaterials:
         count += fbx_material.countObjects(meshes)
-
-    if action:
-        count += fbx_anim.countObjects(action)
 
     if config.binary:
         from . import fbx_binary
