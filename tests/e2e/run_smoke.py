@@ -11,6 +11,11 @@ folder, so the user's real MakeHuman settings and files are never touched.
 The wall-clock limit is enforced here, from outside the app: the watchdog only
 knows a PID and a clock, so a hung GUI cannot stop it from firing.
 
+The window opens on the main screen (the one with the menu bar) and, on macOS,
+the app runs in the background without taking the keyboard focus, so a test
+run does not get in the way of whatever is being done on another screen. Set
+MH_E2E_WINDOW=x,y to open it elsewhere (global screen coordinates).
+
 Exit status is 0 only when every check passed, the run completed and the app
 exited by itself with status 0.
 """
@@ -30,6 +35,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(HERE))
 MH_DIR = os.path.join(REPO, "makehuman")
 PLUGIN_NAME = "9_zz_smoketest"
+# MakeHuman's default window size; (0, 0) is the top left corner of the main screen
+WINDOW = {"x": 0, "y": 0, "width": 800, "height": 600, "state": ["normal geometry"]}
 
 
 def read_version_info():
@@ -54,7 +61,11 @@ def prepare_home(home, port):
     shutil.copytree(os.path.join(HERE, "smoke"), os.path.join(plugins, PLUGIN_NAME),
                     ignore=shutil.ignore_patterns("__pycache__"))
     version, sentinel = read_version_info()
-    settings = {"version": version, "_versionSentinel": sentinel, "activeUserPlugins": [PLUGIN_NAME]}
+    window = dict(WINDOW)
+    if os.environ.get("MH_E2E_WINDOW"):
+        window["x"], window["y"] = (int(v) for v in os.environ["MH_E2E_WINDOW"].split(","))
+    settings = {"version": version, "_versionSentinel": sentinel, "activeUserPlugins": [PLUGIN_NAME],
+                "restoreWindowSize": True, "windowGeometry": window}
     with open(os.path.join(user_dir, "settings.ini"), "w", encoding="utf-8") as f:
         json.dump(settings, f, indent=4)
     with open(os.path.join(user_dir, "socket.cfg"), "w", encoding="utf-8") as f:
@@ -71,7 +82,10 @@ def run(python, timeout, only=None, keep=False, out=sys.stdout, coverage=None):
     log_path = os.path.join(home, "app.log")
     env = dict(os.environ, MH_HOME_LOCATION=home, MH_SMOKE_RESULTS=results_path,
                MH_SMOKE_OUTDIR=os.path.join(home, "out"), MH_SMOKE_SOCKET_PORT=str(port),
-               PYTHONUNBUFFERED="1")
+               PYTHONUNBUFFERED="1",
+               # macOS: stay a background process, which never takes the keyboard focus
+               # (Qt otherwise makes a plain executable a foreground app and activates it)
+               QT_MAC_DISABLE_FOREGROUND_APPLICATION_TRANSFORM="1")
     # The app needs the real display (tests/conftest.py sets offscreen for unit tests)
     env.pop("QT_QPA_PLATFORM", None)
     if only:

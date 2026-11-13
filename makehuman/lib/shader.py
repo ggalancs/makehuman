@@ -252,7 +252,9 @@ class SamplerUniform(Uniform):
             glBindTexture(self.target, tex.textureId)
         else:
             tex = texture.getTexture(texture.NOTFOUND_TEXTURE)
-            if tex in (None, False):
+            # The not-found placeholder is a 2D texture: binding it to another target (e.g.
+            # the skin shader's sampler1D gradientMap when the material has none) is a GL error
+            if tex in (None, False) or self.target != GL_TEXTURE_2D:
                 glBindTexture(self.target, 0)
             else:
                 glBindTexture(self.target, tex.textureId)

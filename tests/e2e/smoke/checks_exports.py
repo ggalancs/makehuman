@@ -1,6 +1,7 @@
 """End-to-end checks for animation playback and every exporter option."""
 
 import glob
+import hashlib
 import os
 
 import numpy as np
@@ -56,6 +57,9 @@ def check_animation_playback(smoke):
     human = G.app.selectedHuman
     G.app.getTask("Pose/Animate", "Skeleton").chooseSkeleton(getpath.getSysDataPath("rigs/default.mhskel"))
     walk = _make_animation(smoke)
+    # an expression left active by earlier checks would be merged into a one-frame pose
+    G.app.getTask("Pose/Animate", "Expressions").chooseExpression(None)
+    G.app.getTask("Pose/Animate", "Pose").loadPose(None)
     G.app.getTask("Pose/Animate", "Pose").loadPose(walk)
     mh.changeTask("Pose/Animate", "Animations")
     tv = G.app.getTask("Pose/Animate", "Animations")
@@ -129,7 +133,7 @@ def check_export_options(smoke):
         text = open(_export(smoke, dae, "dae_%d" % i, "dae"), encoding="utf-8").read()
         # Collada writes animations (the pose plus the face units) only with Facial pose-units on
         expect(("<animation" in text) == (i == 1), "Collada animations in variant %d: %s" % (i, "<animation" in text))
-        outputs.add(len(text))
+        outputs.add(hashlib.sha256(text.encode("utf-8")).hexdigest())
     expect(len(outputs) == 4, "Collada variants produced identical files")
     dae.yUpFaceZ.setSelected(True)
     dae.localY.setSelected(True)

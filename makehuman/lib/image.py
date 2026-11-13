@@ -194,11 +194,12 @@ class Image(object):
             data = np.zeros(_data.shape, dtype=_data.dtype)
             data[:, :, :] = _data[:, :, [2, 1, 0, 3]]
         else:
-            # components == 4
+            # components == 4: ARGB32 is B, G, R, A in memory (little-endian)
             fmt = image_qt.QtGui.QImage.Format_ARGB32
-            data = self.data
+            data = np.ascontiguousarray(self.data[:, :, [2, 1, 0, 3]])
+        # rows of RGB888 are not 4-byte aligned: give their length
         return image_qt.QtGui.QImage(
-            data.tobytes(), data.shape[1], data.shape[0], fmt)
+            data.tobytes(), data.shape[1], data.shape[0], data.shape[1] * data.shape[2], fmt)
 
     def resized_(self, width, height, filter=FILTER_NEAREST):
         if filter == FILTER_NEAREST:

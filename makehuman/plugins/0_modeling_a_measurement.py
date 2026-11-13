@@ -87,7 +87,9 @@ class MeasureTaskView(guimodifier.ModifierTaskView):
             slider = event
             self.onSliderFocus(slider)
         @slider.mhEvent
-        def onChange(event):
+        def onChange(value):
+            # this replaces the slider's own onChange, which applies the value to the model
+            type(slider).onChange(slider, value)
             self.syncGUIStats()
 
     def _createMeasureMesh(self):

@@ -208,6 +208,10 @@ class PoseLibraryTaskView(gui3d.TaskView, filecache.MetadataCacher):
         human stand on the ground plane, independent of body length.
         """
         import numpy.linalg as la
+        if not self.bvh_bone_length:
+            # The active animation was not loaded by this library (e.g. an expression,
+            # or the pose was cleared): there is no BVH bone length to scale against
+            return
         bone = self.human.getBaseSkeleton().getBone(COMPARE_BONE)
         scale_factor = float(bone.length) / self.bvh_bone_length
         trans = scale_factor * self.bvh_root_translation

@@ -94,13 +94,6 @@ class ProjectionAction(gui3d.Action):
         gui3d.app.selectedHuman.setTexture(self.before)
         return True
 
-def pointInRect(point, rect):
-
-    if point[0] < rect[0] or point[0] > rect[2] or point[1] < rect[1] or point[1] > rect[3]:
-        return False
-    else:
-        return True
-
 class BackgroundChooser(gui3d.TaskView):
 
     def __init__(self, category):
@@ -476,147 +469,6 @@ class BackgroundChooser(gui3d.TaskView):
             return
         file.write('background enabled %s\n' % self.isBackgroundEnabled() )
 
-class TextureProjectionView(gui3d.TaskView) :
-
-    def __init__(self, category, backgroundChooserView):
-        self.human = gui3d.app.selectedHuman
-
-        self.backgroundImage = backgroundChooserView.backgroundImage
-        self.texture = backgroundChooserView.texture
-
-        self.backgroundChooserView = backgroundChooserView
-
-        gui3d.TaskView.__init__(self, category, 'Projection')
-
-        self.projectionBox = self.addLeftWidget(gui.GroupBox('Projection'))
-
-        self.backgroundBox = self.addLeftWidget(gui.GroupBox('Background settings'))
-        self.chooseBGButton = self.backgroundBox.addWidget(gui.Button('Choose background'))
-
-        @self.chooseBGButton.mhEvent
-        def onClicked(event):
-            mh.changeTask('Settings', 'Background')
-
-        self.projectBackgroundButton = self.projectionBox.addWidget(gui.Button('Project background'))
-
-        @self.projectBackgroundButton.mhEvent
-        def onClicked(event):
-            self.projectBackground()
-
-        self.projectLightingButton = self.projectionBox.addWidget(gui.Button('Project lighting'))
-
-        @self.projectLightingButton.mhEvent
-        def onClicked(event):
-            self.projectLighting()
-
-        self.projectUVButton = self.projectionBox.addWidget(gui.Button('Project UV topology'))
-
-        @self.projectUVButton.mhEvent
-        def onClicked(event):
-            self.projectUV()
-
-        displayBox = self.addRightWidget(gui.GroupBox('Display settings'))
-        self.shadelessButton = displayBox.addWidget(gui.CheckBox('Shadeless'))
-
-        @self.shadelessButton.mhEvent
-        def onClicked(event):
-            gui3d.app.selectedHuman.setShadeless(1 if self.shadelessButton.selected else 0)
-
-    def backgroundImage(self):
-        return self.backgroundChooserView.backgroundImage
-
-    def onShow(self, event):
-        gui3d.TaskView.onShow(self, event)
-        self.human.setShadeless(1 if self.shadelessButton.selected else 0)
-
-        self.oldDiffuseShaderSetting = self.human.material.shaderConfig['diffuse']
-        self.human.mesh.configureShading(diffuse = True)
-        mh.redraw()
-
-    def onHide(self, event):
-
-        gui3d.TaskView.onHide(self, event)
-        self.human.setShadeless(0)
-
-        self.human.mesh.configureShading(diffuse = self.oldDiffuseShaderSetting)
-        mh.redraw()
-
-    def onHumanChanging(self, event):
-        pass
-
-    def projectBackground(self):
-        if not self.backgroundChooserView.isBackgroundShowing():
-            gui3d.app.prompt("Warning", "You need to load a background for the current view before you can project it.", "OK")
-            return
-
-        mesh = self.human.getSeedMesh()
-
-        # for all quads, project vertex to screen
-        # if one vertex falls in bg rect, project screen quad into uv quad
-        # warp image region into texture
-        ((x0,y0,z0), (x1,y1,z1)) = self.backgroundImage.mesh.calcBBox()
-        camera = mh.cameras[self.backgroundImage.mesh.cameraMode]
-        x0, y0, _ = camera.convertToScreen(x0, y0, z0, self.backgroundImage.mesh)
-        x1, y1, _ = camera.convertToScreen(x1, y1, z1, self.backgroundImage.mesh)
-        leftTop = (x0, y1)
-        rightBottom = (x1, y0)
-
-        dstImg = projection.mapImage(self.backgroundImage, mesh, leftTop, rightBottom)
-        texPath = mh.getPath('data/skins/projection.png')
-        if os.path.isfile(texPath):
-            oldImg = mh.Image(texPath)
-        else:
-            oldImg = None
-
-        gui3d.app.do(ProjectionAction("Change projected background texture",
-                self.human.getTexture(),
-                texPath,
-                oldImg,
-                dstImg))
-        log.debug("Enabling shadeless rendering on body")
-        self.shadelessButton.setChecked(True)
-        self.human.setShadeless(1)
-        mh.redraw()
-
-    def projectLighting(self):
-        dstImg = projection.mapLighting()
-        #dstImg.resize(128, 128)
-        texPath = mh.getPath('data/skins/lighting.png')
-        if os.path.isfile(texPath):
-            oldImg = mh.Image(texPath)
-        else:
-            oldImg = None
-
-        gui3d.app.do(ProjectionAction("Change projected lighting texture",
-                self.human.getTexture(),
-                texPath,
-                oldImg,
-                dstImg))
-        log.debug("Enabling shadeless rendering on body")
-        self.shadelessButton.setChecked(True)
-        self.human.setShadeless(1)
-        mh.redraw()
-
-    def projectUV(self):
-        dstImg = projection.mapUV()
-        #dstImg.resize(128, 128)
-        texPath = mh.getPath('data/skins/uvtopo.png')
-        if os.path.isfile(texPath):
-            oldImg = mh.Image(texPath)
-        else:
-            oldImg = None
-
-        gui3d.app.do(ProjectionAction("Change projected UV map texture",
-                self.human.getTexture(),
-                texPath,
-                oldImg,
-                dstImg))
-        log.debug("Enabling shadeless rendering on body")
-        self.shadelessButton.setChecked(True)
-        self.human.setShadeless(1)
-        mh.redraw()
-
-
 # This method is called when the plugin is loaded into makehuman
 # The app reference is passed so that a plugin can attach a new category, task, or other GUI elements
 
@@ -626,10 +478,6 @@ def load(app):
     bgChooser = BackgroundChooser(category)
     bgChooser.sortOrder = 1
     category.addTask(bgChooser)
-    category = app.getCategory('Utilities')
-    bgSettings = TextureProjectionView(category, bgChooser)
-    bgSettings.sortOrder = 1.5
-    #category.addTask(bgSettings)
 
     gui3d.app.addLoadHandler('background', bgChooser.loadHandler)
     gui3d.app.addSaveHandler(bgChooser.saveHandler)

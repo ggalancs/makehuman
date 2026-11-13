@@ -55,6 +55,7 @@ import algos3d
 import gui
 import language
 import log
+import qtui
 import contextlib
 
 from mhversion import MHVersion
@@ -1793,6 +1794,9 @@ class MHApplication(gui3d.Application, mh.Application):
         self.createShortcuts()
 
         self.splash = gui.SplashScreen(self.getThemeResource('images', 'splash.png'), mh.getVersionDigitsStr())
+        if self.getSetting('restoreWindowSize'):
+            # Qt shows the splash on the screen under the mouse: use the one the window returns to
+            qtui.centerOnScreenOf(self.splash, self.getSetting('windowGeometry'))
         self.splash.show()
         if not sys.platform.startswith('darwin'):
             self.mainwin.hide()  # Fix for OSX crash thanks to Francois (issue #593)

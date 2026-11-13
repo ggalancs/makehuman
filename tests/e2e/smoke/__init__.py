@@ -90,7 +90,8 @@ class Smoke(object):
             return
         tmp = RESULTS_PATH + ".tmp"
         with open(tmp, "w", encoding="utf-8") as f:
-            json.dump({"complete": complete, "modals": self.modals, "results": self.results}, f, indent=2)
+            json.dump({"complete": complete, "modals": self.modals, "results": self.results,
+                       "windows": _window_placer.seen if _window_placer else []}, f, indent=2)
         os.replace(tmp, RESULTS_PATH)
 
     def allow_logged(self, substring):
@@ -230,11 +231,13 @@ class Smoke(object):
         screen = np.array([cam.convertToScreen(*c, obj=human.mesh) for c in coords])
         points = []
         ys = screen[:, 1]
-        for q in (0.15, 0.3, 0.5, 0.7):
+        for q in (0.12, 0.2, 0.28, 0.36):  # head to chest: one solid blob, unlike hips and legs
             lo, hi = np.quantile(ys, [q - 0.03, q + 0.03])
             band = np.where((ys >= lo) & (ys <= hi))[0]
-            # front-most vertex of the band (smallest depth), nudged off the silhouette
-            i = band[np.argmin(screen[band, 2])]
+            # among the front-facing vertices of the band (smallest depths), the one nearest
+            # the band's horizontal middle: well inside the silhouette, not on its edge
+            front = band[screen[band, 2] <= np.quantile(screen[band, 2], 0.3)]
+            i = front[np.argmin(np.abs(screen[front, 0] - np.median(screen[band, 0])))]
             points.append((int(round(screen[i, 0])), int(round(screen[i, 1]))))
         return points
 
@@ -403,20 +406,43 @@ class Smoke(object):
         expect(np.isfinite(self.human.meshData.coord).all(), "non-finite coordinates after randomize")
 
     def check_render(self):
+        """Render with and without anti-aliasing; the skin (red above blue, whatever its tone)
+        must keep its colours in the render data, on screen and in the saved file."""
+        import image_qt
         tv = G.app.getTask("Rendering", "Render")
         viewer = G.app.getTask("Rendering", "Viewer")
         mh.changeTask("Rendering", "Render")
-        sizes = {}
-        for aa in (False, True):
-            tv.AAbox.setSelected(aa)
-            tv.renderingWidth, tv.renderingHeight = 320, 240
-            tv.renderButton.callEvent("onClicked", None)
-            pump(0.2)
-            pm = viewer.image.imageLabel.pixmap()
-            expect(pm is not None and not pm.isNull(), "no rendered image in viewer (AA=%s)" % aa)
-            sizes["AA" if aa else "noAA"] = [pm.width(), pm.height()]
+        rendered = []
+        real_set_image = viewer.setImage
+        viewer.setImage = lambda img: (rendered.append(img), real_set_image(img))
+
+        def red_minus_blue(data):
+            opaque = data[..., 3] > 128
+            expect(opaque.sum() > 1000, "render has %d opaque pixels" % opaque.sum())
+            return float(data[..., 0][opaque].mean() - data[..., 2][opaque].mean())
+
+        report = {}
+        try:
+            for aa in (False, True):
+                tv.AAbox.setSelected(aa)
+                tv.renderingWidth, tv.renderingHeight = 320, 240
+                tv.renderButton.callEvent("onClicked", None)
+                pump(0.2)
+                pm = viewer.image.imageLabel.pixmap()
+                expect(pm is not None and not pm.isNull(), "no rendered image in viewer (AA=%s)" % aa)
+                expect([pm.width(), pm.height()] == [320, 240], "render size %dx%d" % (pm.width(), pm.height()))
+                path = self.out("render_aa_%s.png" % aa)
+                viewer.image.save(path)
+                diffs = {"data": red_minus_blue(rendered[-1].data),
+                         "screen": red_minus_blue(image_qt.load(pm.toImage())),
+                         "file": red_minus_blue(image_qt.load(path))}
+                report["AA" if aa else "noAA"] = {k: round(v, 1) for k, v in diffs.items()}
+                expect(all(v > 10 for v in diffs.values()),
+                       "red and blue swapped (AA=%s), red minus blue: %s" % (aa, diffs))
+        finally:
+            del viewer.setImage
         mh.changeTask("Modelling", "Main")
-        return sizes
+        return report
 
     def check_save_load_mhm(self):
         import guisave
@@ -511,8 +537,8 @@ class Smoke(object):
             ("exports", self.check_exports),
             ("socket_server", self.check_socket_server),
         ]
-        from . import checks_api, checks_app, checks_exports, checks_plugins, checks_utilities
-        for module in (checks_utilities, checks_api, checks_plugins, checks_app, checks_exports):
+        from . import checks_api, checks_app, checks_exports, checks_more, checks_plugins, checks_utilities
+        for module in (checks_utilities, checks_api, checks_plugins, checks_app, checks_exports, checks_more):
             checks += [(name, (lambda fn: lambda: fn(self))(fn)) for name, fn in module.CHECKS]
         only = os.environ.get("MH_SMOKE_ONLY")
         if only:
@@ -528,6 +554,7 @@ class Smoke(object):
 
 _smoke = None
 _modal_timer = None
+_window_placer = None
 
 
 def _wait_for_startup():
@@ -538,8 +565,37 @@ def _wait_for_startup():
     QtCore.QTimer.singleShot(500, _smoke.run)
 
 
+class _WindowsOnMainScreen(QtCore.QObject):
+    """Keep every window the app opens on the main window's screen. On macOS Qt leaves
+    the placement of dialogs to the window manager and puts popups where the mouse is,
+    which, with the app in the background as in these tests, is whatever screen is in use.
+    Qt sends Show before it maps the native window, so moving it here places it before
+    anything is drawn. Every window shown is recorded in the results ("windows")."""
+
+    def __init__(self):
+        super(_WindowsOnMainScreen, self).__init__()
+        self.seen = []
+
+    def eventFilter(self, obj, event):
+        if (event.type() == QtCore.QEvent.Show and isinstance(obj, QtWidgets.QWidget)
+                and obj.isWindow() and G.app.mainwin is not None and obj is not G.app.mainwin):
+            area = G.app.mainwin.screen().availableGeometry()
+            frame = obj.frameGeometry()
+            dialog = obj.windowType() in (QtCore.Qt.Dialog, QtCore.Qt.Sheet)
+            if dialog or not area.contains(frame.center()):
+                frame.moveCenter(G.app.mainwin.frameGeometry().center())
+                frame.moveLeft(max(area.left(), min(frame.left(), area.right() + 1 - frame.width())))
+                frame.moveTop(max(area.top(), min(frame.top(), area.bottom() + 1 - frame.height())))
+                obj.move(frame.topLeft())
+            self.seen.append("%s type=%#x at %d,%d %dx%d" % ((type(obj).__name__, int(obj.windowType()))
+                                                        + frame.getRect()))
+        return False
+
+
 def load(app):
-    global _smoke, _modal_timer
+    global _smoke, _modal_timer, _window_placer
+    _window_placer = _WindowsOnMainScreen()
+    QtWidgets.QApplication.instance().installEventFilter(_window_placer)
     _smoke = Smoke()
     _modal_timer = QtCore.QTimer()
     _modal_timer.timeout.connect(_smoke.close_modals)

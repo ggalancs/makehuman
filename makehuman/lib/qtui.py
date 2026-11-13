@@ -408,6 +408,23 @@ def getQtVersionString():
 def getQtVersion():
     return [ int(versionNb) for versionNb in getQtVersionString().split(".") ]
 
+def centerOnScreenOf(widget, geometry):
+    """Center widget on the screen that holds the middle of geometry, a window
+    geometry saved with Frame.storeGeometry(). Return that screen, or None (and
+    leave the widget where it is) when no screen holds it."""
+    try:
+        center = QtCore.QPoint(int(geometry['x'] + geometry['width'] // 2),
+                               int(geometry['y'] + geometry['height'] // 2))
+    except (TypeError, KeyError):
+        return None
+    screen = QtGui.QGuiApplication.screenAt(center)
+    if screen is None:
+        return None
+    frame = widget.frameGeometry()
+    frame.moveCenter(screen.availableGeometry().center())
+    widget.move(frame.topLeft())
+    return screen
+
 def supportsSVG():
     """
     Determines whether Qt supports SVG image files.
@@ -415,7 +432,7 @@ def supportsSVG():
     qtVersion = getQtVersion()
     # Care needs to be taken that pyinstaller windows builds and
     # OSX py2app builds include the qt svg lib and plugin
-    return qtVersion[0] >= 4 and qtVersion[1] >= 2 and \
+    return tuple(qtVersion[:2]) >= (4, 2) and \
         'svg' in supportedImageFormats()
 
 def supportsJPG():
@@ -608,7 +625,7 @@ class Frame(QtWidgets.QMainWindow):
         if 'maximized' in state:
             self.showMaximized()
         if 'fullscreen' in state:
-            self.showFullscreen()
+            self.showFullScreen()
         if 'normal geometry' in state:
             self.showNormal()
         if 'minimized' in state:
@@ -848,9 +865,10 @@ def getSaveFileName(directory, filter = "All files (*.*)"):
         compile_str = re.compile(r'\(.*\)')
         match = compile_str.search(ftype)
         if match:
-            result = match.group().strip('()').split('*')
-            if len(result) >= 2:
-                path = path + result[1]
+            # the extension of the first pattern: "Images (*.png *.jpg)" -> ".png"
+            patterns = match.group().strip('()').split()
+            if patterns:
+                path = path + os.path.splitext(patterns[0])[1]
     return path, ftype
 
 def getOpenFileName(directory, filter = "All files (*.*)"):

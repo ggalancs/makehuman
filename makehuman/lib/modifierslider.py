@@ -68,6 +68,7 @@ class ModifierSlider(gui.Slider):
         self.modifier = modifier
         self.value = None
         self.changing = None
+        self._changePending = False
         if cameraView:
             self.view = getattr(G.app, cameraView)
         else:
@@ -138,11 +139,21 @@ class ModifierSlider(gui.Slider):
 
 
     def onChange(self, value):
-        #G.app.callAsync(self._onChange)
-        pass
+        # The keyboard, the mouse wheel and the value box change the slider without a
+        # press and release: apply the change to the model (and the undo stack) here too.
+        self._scheduleChange()
+
+    def _scheduleChange(self):
+        # A release emits sliderReleased and then valueChanged: apply the change once
+        if self._changePending:
+            return
+        self._changePending = True
+        G.app.callAsync(self._onChange)
 
     def _onChange(self):
         import humanmodifier
+
+        self._changePending = False
 
         if self.slider.isSliderDown():
             # Don't do anything when slider is being clicked or dragged (onRelease triggers it)
@@ -169,7 +180,7 @@ class ModifierSlider(gui.Slider):
         self.value = None
 
     def onRelease(self, w):
-        G.app.callAsync(self._onChange)
+        self._scheduleChange()
 
     def onFocus(self, event):
         if self.view:

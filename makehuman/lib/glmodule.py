@@ -950,7 +950,8 @@ def renderToBuffer(width, height, productionRender = True):
     glReadBuffer(GL_COLOR_ATTACHMENT0)
     glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, surface)
 
-    surface = Image(data = np.ascontiguousarray(surface[::-1,:,[2,1,0]]))
+    # flip the rows (OpenGL starts at the bottom) and drop alpha: RGB
+    surface = Image(data = np.ascontiguousarray(surface[::-1,:,:3]))
 
     # Unbind frame buffer
     safeRun(glDeleteFramebuffers, np.array([framebuffer]), fallbacks=(glDeleteFramebuffersEXT))
