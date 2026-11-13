@@ -7,12 +7,12 @@ on:
 
 jobs:
   unit:
-    # GitHub's macos-14 and later runners are Apple Silicon (arm64)
+    # GitHub's standard macos-15 and macos-26 runners are Apple Silicon (arm64)
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        os: [macos-15, macos-26]
         python: ["3.11", "3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
