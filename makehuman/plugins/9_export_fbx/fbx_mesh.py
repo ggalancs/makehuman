@@ -109,9 +109,10 @@ def writeGeometryProp(fp, mesh, config):
 
     vertString = ",".join( ["%.4f,%.4f,%.4f" % tuple(co) for co in coord] )
     if mesh.vertsPerFaceForExport == 4:
-        indexString = ",".join( ['%d,%d,%d,%d' % (fv[0],fv[1],fv[2],-1-fv[3]) for fv in mesh.fvert] )
+        # int(): fvert is uint32, and numpy 2 refuses -1 - uint32 (the last index is stored as -1-i)
+        indexString = ",".join( ['%d,%d,%d,%d' % (fv[0],fv[1],fv[2],-1-int(fv[3])) for fv in mesh.fvert] )
     else:
-        indexString = ",".join( ['%d,%d,%d' % (fv[0],fv[1],-1-fv[2]) for fv in mesh.fvert] )
+        indexString = ",".join( ['%d,%d,%d' % (fv[0],fv[1],-1-int(fv[2])) for fv in mesh.fvert] )
 
     from . import fbx_utils
     fp.write(

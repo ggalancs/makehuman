@@ -511,8 +511,8 @@ class Smoke(object):
             ("exports", self.check_exports),
             ("socket_server", self.check_socket_server),
         ]
-        from . import checks_api, checks_app, checks_plugins, checks_utilities
-        for module in (checks_utilities, checks_api, checks_plugins, checks_app):
+        from . import checks_api, checks_app, checks_exports, checks_plugins, checks_utilities
+        for module in (checks_utilities, checks_api, checks_plugins, checks_app, checks_exports):
             checks += [(name, (lambda fn: lambda: fn(self))(fn)) for name, fn in module.CHECKS]
         only = os.environ.get("MH_SMOKE_ONLY")
         if only:
