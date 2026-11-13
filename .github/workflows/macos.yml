@@ -1,0 +1,39 @@
+name: macOS (Apple Silicon)
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    # GitHub's macos-14 and later runners are Apple Silicon (arm64)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+        python: ["3.11", "3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check the interpreter is native arm64
+        run: python -c "import platform, sys; m = platform.machine(); print(m); sys.exit(m != 'arm64')"
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements-dev.txt
+      - name: Unit tests and coverage gate
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: macos/check.sh
+      - name: Compile targets, meshes and proxies
+        working-directory: makehuman
+        run: |
+          ../.venv/bin/python compile_targets.py > /dev/null
+          ../.venv/bin/python compile_models.py > /dev/null
+          ../.venv/bin/python compile_proxies.py > /dev/null
+          test -s data/targets.npz && test -s data/3dobjs/base.npz

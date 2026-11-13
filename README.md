@@ -3,6 +3,21 @@
 This is the main source code for the MakeHuman application as such. See "Getting started" below for instructions on how to get MakeHuman up and running. Mac users
 _should_ be able to use the same instructions as windows users, although this has not been thoroughly tested.
 
+## macOS on Apple Silicon (this fork)
+
+This fork runs natively on Apple Silicon Macs (arm64) with current Python (3.11–3.14), numpy 2 and PyQt5 5.15:
+
+```bash
+git clone https://github.com/ggalancs/makehuman.git
+cd makehuman
+macos/setup.sh        # venv, dependencies, system assets (~270 MB), compiled data
+macos/makehuman       # start MakeHuman
+```
+
+The asset repository used by `download_assets_git.py` no longer exists; `download_system_assets.py`
+installs the same CC0 assets from the MakeHuman Community asset pack instead. What was changed and
+why, how it was tested and how to run the checks: [macos/README.md](macos/README.md).
+
 ## Current status
 
 At the point of writing this, the source code is almost ready for a stable release. 

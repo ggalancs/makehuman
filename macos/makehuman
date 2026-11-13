@@ -1,0 +1,10 @@
+#!/bin/bash
+# Start MakeHuman from this source checkout (run macos/setup.sh once first).
+# Arguments are passed through, e.g.  macos/makehuman --help  or  macos/makehuman model.mhm
+REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+PY="$REPO/.venv/bin/python"
+if [ ! -x "$PY" ]; then
+  echo "No virtual environment found. Run $REPO/macos/setup.sh first." >&2
+  exit 1
+fi
+exec "$PY" "$REPO/makehuman/makehuman.py" "$@"
