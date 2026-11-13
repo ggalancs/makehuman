@@ -1,8 +1,10 @@
 #!/bin/bash
 # Project checks. Run before every commit.
 #
-#   macos/check.sh         unit tests + coverage gate (no window opens)
-#   macos/check.sh --e2e   also drive the real app end to end (opens the MakeHuman window)
+#   macos/check.sh         unit tests + coverage gate of the fork's own code (no window opens)
+#   macos/check.sh --e2e   also drive the real app end to end and require 90% line
+#                          coverage of the whole application (opens the MakeHuman window
+#                          on the main screen, without taking the keyboard focus)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -20,5 +22,5 @@ cd "$REPO"
   --cov=download_system_assets --cov-report=term-missing --cov-fail-under=90
 
 if [ "${1:-}" = "--e2e" ]; then
-  MH_RUN_E2E=1 "$PY" -m pytest tests/e2e -q
+  "$REPO/macos/coverage.sh" --fail-under 90
 fi

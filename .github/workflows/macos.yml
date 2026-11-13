@@ -26,14 +26,29 @@ jobs:
           python -m venv .venv
           .venv/bin/python -m pip install --upgrade pip
           .venv/bin/python -m pip install -r requirements-dev.txt
-      - name: Unit tests and coverage gate
-        env:
-          QT_QPA_PLATFORM: offscreen
-        run: macos/check.sh
-      - name: Compile targets, meshes and proxies
+      # The tests use the CC0 system assets, installed as macos/setup.sh does. The key is
+      # the pack's SHA-256 (PACK_SHA256 in download_system_assets.py, which verifies it).
+      - name: Cache the CC0 system assets pack
+        id: assets
+        uses: actions/cache@v4
+        with:
+          path: ~/mh-assets
+          key: mh-system-assets-b542127a8e25547c7c29c19f2d1d2adb9a664c80396ecd694095dbc8028a0107
+      - name: Download the system assets pack
+        if: steps.assets.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/mh-assets
+          curl -fsSL --retry 3 -o ~/mh-assets/makehuman_system_assets_cc0.zip \
+            https://files.makehumancommunity.org/asset_packs/makehuman_system_assets/makehuman_system_assets_cc0.zip
+      - name: Install the assets; compile targets, meshes and proxies
         working-directory: makehuman
         run: |
+          ../.venv/bin/python download_system_assets.py --zip ~/mh-assets/makehuman_system_assets_cc0.zip
           ../.venv/bin/python compile_targets.py > /dev/null
           ../.venv/bin/python compile_models.py > /dev/null
           ../.venv/bin/python compile_proxies.py > /dev/null
           test -s data/targets.npz && test -s data/3dobjs/base.npz
+      - name: Unit tests and coverage gate
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: macos/check.sh
