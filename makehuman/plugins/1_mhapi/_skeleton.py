@@ -40,7 +40,7 @@ class Skeleton(NameSpace):
         if skeleton is None:
             # No rig is set
             return None
-        b = BVH()
+        b = bvh.BVH()
         b.fromSkeleton(skeleton)
 
         return b
@@ -50,8 +50,8 @@ class Skeleton(NameSpace):
  
     def clearPoseAndExpression(self):
         """Put skeleton back into rest pose"""
-        human.resetToRestPose()
-        human.removeAnimations()
+        self.human.resetToRestPose()
+        self.human.removeAnimations()
 
     def setPoseFromFile(self, bvh_file_name):
         """Set the pose from a BVH file"""

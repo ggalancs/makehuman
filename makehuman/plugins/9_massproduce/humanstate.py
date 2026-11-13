@@ -76,6 +76,9 @@ class HumanState():
         valuesHash[pickedName] = 1.0
 
     def _pickOneFromArray(self, values):
+        """A random element, or None when nothing is allowed (an empty list used to crash)."""
+        if not values:
+            return None
         num = len(values)
         pickedVal = random.randrange(num)
         return values[pickedVal]
@@ -229,6 +232,8 @@ class HumanState():
             if allowed:
                 allowedHair.append(hairName)
 
+        if not allowedHair:
+            return None  # nothing allowed for this gender: wear none
         pick = random.randrange(len(allowedHair))
         return self.settings.getValue("allowedHair",allowedHair[pick],"fullPath")
 
@@ -246,6 +251,8 @@ class HumanState():
             if allowed:
                 allowedEyebrows.append(eyebrowsName)
 
+        if not allowedEyebrows:
+            return None  # nothing allowed for this gender: wear none
         pick = random.randrange(len(allowedEyebrows))
         return self.settings.getValue("allowedEyebrows",allowedEyebrows[pick],"fullPath")
 
@@ -264,6 +271,8 @@ class HumanState():
             if allowed:
                 allowedEyelashes.append(eyelashesName)
 
+        if not allowedEyelashes:
+            return None  # nothing allowed for this gender: wear none
         pick = random.randrange(len(allowedEyelashes))
         return self.settings.getValue("allowedEyelashes",allowedEyelashes[pick],"fullPath")
 
@@ -292,22 +301,26 @@ class HumanState():
     def _randomizeFullClothes(self):
         allowed = self._getAllowedClothesForPartAndGender("full", self._getCurrentGender())
         picked = self._pickOneFromArray(allowed)
-        self.clothes.append(picked)
+        if picked is not None:
+            self.clothes.append(picked)
 
     def _randomizeUpperClothes(self):
         allowed = self._getAllowedClothesForPartAndGender("upper", self._getCurrentGender())
         picked = self._pickOneFromArray(allowed)
-        self.clothes.append(picked)
+        if picked is not None:
+            self.clothes.append(picked)
 
     def _randomizeLowerClothes(self):
         allowed = self._getAllowedClothesForPartAndGender("lower", self._getCurrentGender())
         picked = self._pickOneFromArray(allowed)
-        self.clothes.append(picked)
+        if picked is not None:
+            self.clothes.append(picked)
 
     def _randomizeShoes(self):
         allowed = self._getAllowedClothesForPartAndGender("shoes", self._getCurrentGender())
         picked = self._pickOneFromArray(allowed)
-        self.clothes.append(picked)
+        if picked is not None:
+            self.clothes.append(picked)
 
     def _randomizeProxies(self):
         if self.settings.getValue("proxies","hair"):

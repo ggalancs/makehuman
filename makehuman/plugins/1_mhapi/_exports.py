@@ -38,6 +38,7 @@ class Exports(NameSpace):
             if useExportsDir:
                 of = os.path.basename(of)
                 ed = mh.getPath("exports")
+                os.makedirs(ed, exist_ok=True)  # a fresh user folder has no exports folder yet
                 of = os.path.join(ed,of)
             return of
         return fileentry

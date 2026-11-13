@@ -1,7 +1,7 @@
 """
 End-to-end smoke test that runs inside a real MakeHuman process.
 
-tests/e2e/run_smoke.py installs this file as a user plugin in an isolated
+tests/e2e/run_smoke.py installs this package as a user plugin in an isolated
 MakeHuman home and launches the app. Once the GUI has finished starting, it
 drives the application through its own APIs, records one result per check in
 the JSON file named by MH_SMOKE_RESULTS (rewritten after every check, so a hang
@@ -37,11 +37,16 @@ SOCKET_PORT = int(os.environ.get("MH_SMOKE_SOCKET_PORT", "0"))
 
 
 class ErrorCollector(logging.Handler):
+    """Errors, and warnings that carry an exception: MakeHuman logs exceptions raised
+    inside GUI event handlers as warnings ("Exception during event ...")."""
+
     def __init__(self):
-        super().__init__(level=logging.ERROR)
+        super().__init__(level=logging.WARNING)
         self.records = []
 
     def emit(self, record):
+        if record.levelno < logging.ERROR and not record.exc_info:
+            return
         try:
             text = logging.Formatter("%(name)s: %(message)s").format(record)
         except Exception:
@@ -72,6 +77,7 @@ class Smoke(object):
     def __init__(self):
         self.results = []
         self.modals = []
+        self.modal_accept = False  # a check sets this to answer the next dialogs with OK/Yes
         self.collector = ErrorCollector()
         # Root logger plus the non-propagating loggers from data/logging.ini
         for name in [None, "mh.callEvent", "mh.callAsync", "mh.redraw", "mh.event", "mh.load"]:
@@ -87,7 +93,13 @@ class Smoke(object):
             json.dump({"complete": complete, "modals": self.modals, "results": self.results}, f, indent=2)
         os.replace(tmp, RESULTS_PATH)
 
+    def allow_logged(self, substring):
+        """Declare an error the current check provokes on purpose (matched by substring)."""
+        self.allowed_errors.append(substring)
+
     def check(self, name, fn):
+        self.allowed_errors = []
+        self.modal_accept = False
         first_record = len(self.collector.records)
         entry = {"name": name, "running": True}
         self.results.append(entry)
@@ -102,7 +114,8 @@ class Smoke(object):
             entry["ok"] = False
             entry["error"] = traceback.format_exc()
         pump()
-        logged = self.collector.records[first_record:]
+        logged = [r for r in self.collector.records[first_record:]
+                  if not any(allowed in r for allowed in self.allowed_errors)]
         if logged:
             entry["ok"] = False
             entry["logged_errors"] = logged
@@ -117,8 +130,13 @@ class Smoke(object):
             text = w.windowTitle()
             if isinstance(w, QtWidgets.QMessageBox):
                 text += ": " + w.text()
+            elif hasattr(getattr(w, "text", None), "text"):  # MakeHuman's gui.Dialog
+                text += ": " + w.text.text()
             self.modals.append(text)
-            w.reject() if hasattr(w, "reject") else w.close()
+            if self.modal_accept and hasattr(w, "accept"):
+                w.accept()
+            else:
+                w.reject() if hasattr(w, "reject") else w.close()
 
     # -- helpers -----------------------------------------------------------
 
@@ -493,6 +511,9 @@ class Smoke(object):
             ("exports", self.check_exports),
             ("socket_server", self.check_socket_server),
         ]
+        from . import checks_api, checks_plugins, checks_utilities
+        for module in (checks_utilities, checks_api, checks_plugins):
+            checks += [(name, (lambda fn: lambda: fn(self))(fn)) for name, fn in module.CHECKS]
         only = os.environ.get("MH_SMOKE_ONLY")
         if only:
             keep = set(only.split(","))

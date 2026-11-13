@@ -37,6 +37,7 @@ Common GUI elements extracted from gui3d to minimize coupling with gui backend.
 """
 
 import events3d
+import log
 
 import numpy as np
 import matrix

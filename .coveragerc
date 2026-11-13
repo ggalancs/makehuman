@@ -1,0 +1,16 @@
+# Line coverage of the MakeHuman application (makehuman/), combining the unit
+# tests and the end-to-end run of the real app (macos/check.sh --e2e).
+[run]
+source = makehuman
+omit =
+    */makehuman/data/*
+    # Blender integration tests with hard-coded /opt/blender paths, not application code
+    */makehuman/testsuite/*
+
+[report]
+# Most MakeHuman folders have no __init__.py; without this, modules nobody
+# imports would be left out of the total instead of counting as 0%.
+include_namespace_packages = true
+skip_covered = true
+show_missing = true
+sort = cover

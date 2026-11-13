@@ -51,7 +51,8 @@ def prepare_home(home, port):
     user_dir = os.path.join(home, "Documents", "MakeHuman", "v1py3")
     plugins = os.path.join(user_dir, "plugins")
     os.makedirs(plugins)
-    shutil.copy(os.path.join(HERE, "smoke_plugin.py"), os.path.join(plugins, PLUGIN_NAME + ".py"))
+    shutil.copytree(os.path.join(HERE, "smoke"), os.path.join(plugins, PLUGIN_NAME),
+                    ignore=shutil.ignore_patterns("__pycache__"))
     version, sentinel = read_version_info()
     settings = {"version": version, "_versionSentinel": sentinel, "activeUserPlugins": [PLUGIN_NAME]}
     with open(os.path.join(user_dir, "settings.ini"), "w", encoding="utf-8") as f:
@@ -61,7 +62,8 @@ def prepare_home(home, port):
     return user_dir
 
 
-def run(python, timeout, only=None, keep=False, out=sys.stdout, coverage=False):
+def run(python, timeout, only=None, keep=False, out=sys.stdout, coverage=None):
+    """coverage: path of a coverage data file to write, or None."""
     home = tempfile.mkdtemp(prefix="mh-e2e-")
     port = free_port()
     user_dir = prepare_home(home, port)
@@ -79,8 +81,8 @@ def run(python, timeout, only=None, keep=False, out=sys.stdout, coverage=False):
     with open(log_path, "wb") as log:
         cmd = [python, "-u", os.path.join(MH_DIR, "makehuman.py")]
         if coverage:
-            cmd[1:2] = ["-m", "coverage", "run", "--data-file", os.path.join(home, ".coverage"),
-                        "--source", MH_DIR, "--omit", "*/data/*,*/testsuite/*," + PLUGIN_NAME + ".py"]
+            cmd[1:2] = ["-m", "coverage", "run", "--rcfile", os.path.join(REPO, ".coveragerc"),
+                        "--data-file", coverage, "--source", MH_DIR]
         proc = subprocess.Popen(cmd, cwd=home, env=env, stdout=log, stderr=subprocess.STDOUT)
         timed_out = False
         while proc.poll() is None:
@@ -126,10 +128,6 @@ def run(python, timeout, only=None, keep=False, out=sys.stdout, coverage=False):
     if failed:
         problems.append("%d/%d checks failed" % (len(failed), len(data["results"])))
 
-    if coverage and os.path.isfile(os.path.join(home, ".coverage")):
-        report = subprocess.run([python, "-m", "coverage", "report", "--data-file", os.path.join(home, ".coverage"),
-                                 "--sort=cover"], capture_output=True, text=True)
-        print(report.stdout[-3000:], file=out)
     print("%s in %.0fs. home: %s" % ("PASSED" if not problems else "FAILED: " + "; ".join(problems),
                                      elapsed, home), file=out)
     if not problems and not keep:
@@ -143,9 +141,10 @@ def main(argv=None):
     parser.add_argument("--keep", action="store_true", help="keep the temporary home even when passing")
     parser.add_argument("--only", help="comma separated check names to run")
     parser.add_argument("--python", default=sys.executable, help="interpreter that runs MakeHuman")
-    parser.add_argument("--coverage", action="store_true", help="measure which application lines the run executes")
+    parser.add_argument("--coverage", metavar="DATA_FILE", help="write coverage data of the app to DATA_FILE")
     args = parser.parse_args(argv)
-    return run(args.python, args.timeout, args.only, args.keep, coverage=args.coverage)
+    coverage = os.path.abspath(args.coverage) if args.coverage else None  # the app runs in another folder
+    return run(args.python, args.timeout, args.only, args.keep, coverage=coverage)
 
 
 if __name__ == "__main__":
